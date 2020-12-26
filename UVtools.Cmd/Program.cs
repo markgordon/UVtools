@@ -13,7 +13,7 @@ using UVtools.Core;
 using UVtools.Core.Extensions;
 using UVtools.Core.FileFormats;
 using UVtools.Core.Operations;
-
+using Emgu.CV;
 namespace UVtools.Cmd
 {
     class Program
@@ -47,6 +47,7 @@ namespace UVtools.Cmd
                 new Option(new []{"-p", "--properties"}, "Print a list of all properties/settings"),
                 new Option(new []{"-gcode"}, "Print the GCode if available"),
                 new Option(new []{"-i", "--issues"}, "Compute and print a list of all issues"),
+                new Option(new []{"-l","--optimize"}, "Optimize lift height by layer"),
                 new Option(new []{"-r", "--repair"}, "Attempt to repair all issues"){
                     Argument = new Argument<int[]>("[start layer index] [end layer index] [islands 0/1] [remove empty layers 0/1] [resin traps 0/1]"),
                 },
@@ -102,6 +103,7 @@ namespace UVtools.Cmd
                     bool properties,
                     bool gcode,
                     bool issues,
+                    bool optimize,
                     int[] repair
                     //decimal[] mutResize
                     ) =>
@@ -117,6 +119,7 @@ namespace UVtools.Cmd
                     sw.Restart();
                     fileFormat.Decode(file.FullName, progress);
                     sw.Stop();
+
                     Console.WriteLine($", in {sw.ElapsedMilliseconds}ms");
                     Console.WriteLine("----------------------");
                     Console.WriteLine($"Layers: {fileFormat.LayerCount} x {fileFormat.LayerHeight}mm = {fileFormat.TotalHeight}mm");
@@ -134,7 +137,34 @@ namespace UVtools.Cmd
                     Console.WriteLine($"Thumbnails: {fileFormat.CreatedThumbnailsCount}");
                     Console.WriteLine("----------------------");
                 }
-
+                //alter layer lift
+                if (optimize)
+                {
+                    int layer_num = 0;
+                    foreach(var layer in fileFormat.LayerManager.Layers)
+                    {
+                        layer_num++;
+                        if (layer_num > fileFormat.BottomLayerCount)
+                        {
+                            var mat = layer.LayerMat;
+                            if (layer_num < 5)
+                            {
+                                layer.ExposureTime = 18 - 6 *(layer_num -2);//18,12,6
+                            }
+                            else
+                            {
+                                using var nonZeroMat = new Mat();
+                                CvInvoke.FindNonZero(mat, nonZeroMat);
+                                var NonZeroPixelCount = (uint)nonZeroMat.Height;
+                                float lift_height = 9 * (NonZeroPixelCount / (float)(fileFormat.ResolutionX * fileFormat.ResolutionY)) + 4;
+                                layer.LiftHeight = lift_height;
+                            }
+                            mat.Dispose();
+                        }
+                    }
+                        OperationProgress progress = new OperationProgress();
+                        fileFormat.Encode(convert.FullName, progress);
+                }
                 if (!ReferenceEquals(extract, null))
                 {
                     Console.Write($"Extracting to {extract.FullName}");
@@ -253,8 +283,8 @@ namespace UVtools.Cmd
             });
 
 
-            //await rootCommand.InvokeAsync(args);
-            await rootCommand.InvokeAsync("-f body_Tough0.1mm_SL1_5h16m_HOLLOW_DRAIN.sl1 -r -1");
+            await rootCommand.InvokeAsync(args);
+           // await rootCommand.InvokeAsync("-f C:\\temp\\top2.ctb -opt");
 
             return 1;
 
