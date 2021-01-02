@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "UVtools.Cmd": {
+      "commandName": "Project",
+      "commandLineArgs": "-f C:\\temp\\top2.ctb -l -gcode -o C:\\temp\\temp2.ctb"
+    }
+  }
+}
