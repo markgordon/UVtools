@@ -94,10 +94,12 @@ But also, i need victims for test subject. Proceed at your own risk!
 * Elegoo Saturn
 * Peopoly Phenom
 * Peopoly Phenom L
+* Peopoly Phenom XXL
 * Peopoly Phenom Noir
 * QIDI Shadow5.5
 * QIDI Shadow6.0 Pro
 * QIDI S-Box
+* QIDI 3D ibox mono
 * Phrozen Shuffle
 * Phrozen Shuffle Lite
 * Phrozen Shuffle XL
@@ -113,6 +115,8 @@ But also, i need victims for test subject. Proceed at your own risk!
 * Kelant S400
 * Wanhao D7
 * Wanhao D8
+* Wanhao CGR Mini Mono
+* Wanhao CGR Mono
 * Creality LD-002R
 * Creality LD-002H
 * Creality LD-006
@@ -124,14 +128,8 @@ But also, i need victims for test subject. Proceed at your own risk!
 
 ## Available profiles for PrusaSlicer
 
-* Universal 0.1 Fast - Heavy Supports
-* Universal 0.1 Fast - Medium Supports
-* Universal 0.05 Normal - Heavy Supports
-* Universal 0.05 Normal - Medium Supports
-* Universal 0.035 Detail - Heavy Supports
-* Universal 0.035 Detail - Medium Supports
-* Universal 0.025 UltraDetail - Heavy Supports
-* Universal 0.025 UltraDetail - Medium Supports
+* From 0.01mm to 0.20mm
+* Light, Medium and Heavy Supports
 
 ## Install and configure profiles under PrusaSlicer
 
@@ -181,7 +179,7 @@ sudo dpkg -i packages-microsoft-prod.deb
 rm packages-microsoft-prod.deb
 sudo apt-get update
 sudo apt-get install -y apt-transport-https
-dotnet-runtime-3.1
+dotnet-runtime-5.0
 !-->
 
 ```bash
@@ -193,15 +191,15 @@ sudo apt-get install -y libjpeg-dev libpng-dev libgeotiff-dev libdc1394-22 libav
 **Arch/Manjaro/Similars**
 
 ```bash
-sudo pacman -S openjpeg2 libjpeg-turbo libpng libgeotiff libdc1394 libdc1394 ffmpeg openexr tbb dotnet-runtime 
+sudo pacman -S openjpeg2 libjpeg-turbo libpng libgeotiff libdc1394 libdc1394 ffmpeg openexr tbb
 ```
 
 To run UVtools open it folder on a terminal and call one of:
 
 * Double-click UVtools file
 * `./UVtools`
-* `dotnet UVtools.dll` [For universal package only]
-* `sh UVtools.sh` [For universal package only]
+* `sh UVtools.sh`
+* `dotnet UVtools.dll` [For universal package only, requires dotnet-runtime]
 * As a pratical alternative you can create a shortcut on Desktop
 
 ### Mac
@@ -211,22 +209,21 @@ To run UVtools open it folder on a terminal and call one of:
 1. 4GB RAM or higher
 
 <!--- 
-* Donwload and install: https://dotnet.microsoft.com/download/dotnet-core/thank-you/sdk-3.1.402-macos-x64-installer
+* Donwload and install: https://dotnet.microsoft.com/download/dotnet/thank-you/sdk-5.0.101-macos-x64-installer
 brew install libjpeg libpng libgeotiff libdc1394 ffmpeg openexr tbb
--->
-
 ```bash
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install.sh)"
 brew analytics off
 brew cask install dotnet
 ```
+-->
 
 To run UVtools open it folder on a terminal and call one of:
 
 * Double-click UVtools file
 * `./UVtools`
-* `dotnet UVtools.dll` [For universal package only]
-* `sh UVtools.sh` [For universal package only]
+* `sh UVtools.sh`
+* `dotnet UVtools.dll` [For universal package only, requires dotnet-runtime]
 * As a pratical alternative you can create a shortcut on Desktop
 
 ## How to use

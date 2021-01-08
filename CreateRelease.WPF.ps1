@@ -29,7 +29,7 @@ class FixedEncoder : System.Text.UTF8Encoding {
 ####################################
 ###         Configuration        ###
 ####################################
-$enableMSI = $false
+$enableMSI = $true
 # Profilling
 $stopWatch = New-Object -TypeName System.Diagnostics.Stopwatch 
 $deployStopWatch = New-Object -TypeName System.Diagnostics.Stopwatch
@@ -44,7 +44,11 @@ $project = "UVtools.WPF"
 $buildWith = "Release"
 $netFolder = "net5.0"
 $releaseFolder = "$PSScriptRoot\$project\bin\$buildWith\$netFolder"
-$publishFolder = "$PSScriptRoot\publish"
+$objFolder = "$PSScriptRoot\$project\obj\$buildWith\$netFolder"
+$publishFolder = "publish"
+$platformsFolder = "UVtools.Platforms"
+
+$macIcns = "UVtools.CAD/UVtools.icns"
 
 #$version = (Get-Command "$releaseFolder\UVtools.dll").FileVersionInfo.ProductVersion
 $projectXml = [Xml] (Get-Content "$PSScriptRoot\$project\$project.csproj")
@@ -80,14 +84,22 @@ $runtimes =
     "win-x64" = @{
         "extraCmd" = "-p:PublishReadyToRun=true"
         "exclude" = @("libcvextern.so", "libcvextern.dylib", "UVtools.sh")
+        "include" = @()
     }
     "linux-x64" = @{
         "extraCmd" = "-p:PublishReadyToRun=true"
         "exclude" = @("x86", "x64", "libcvextern.dylib")
+        "include" = @("libcvextern.so")
+    }
+    "arch-x64" = @{
+        "extraCmd" = "-p:PublishReadyToRun=true"
+        "exclude" = @("x86", "x64", "libcvextern.dylib", "libcvextern.so")
+        "include" = @("libcvextern.so")
     }
     "rhel-x64" = @{
         "extraCmd" = "-p:PublishReadyToRun=true"
         "exclude" = @("x86", "x64", "libcvextern.dylib")
+        "include" = @("libcvextern.so")
     }
     #"unix-x64" = @{
     #    "extraCmd" = "-p:PublishReadyToRun=true"
@@ -96,6 +108,7 @@ $runtimes =
     "osx-x64" = @{
         "extraCmd" = "-p:PublishReadyToRun=true"
         "exclude" = @("x86", "x64", "libcvextern.so")
+        "include" = @("libcvextern.dylib")
     }
 }
 
@@ -104,31 +117,75 @@ foreach ($obj in $runtimes.GetEnumerator()) {
     $deployStopWatch.Restart()
     $runtime = $obj.Name;       # runtime name
     $extraCmd = $obj.extraCmd;  # extra cmd to run with dotnet
-    $targetZip = "$publishFolder\${software}_${runtime}_v$version.zip"  # Target zip filename
+    $targetZip = "$publishFolder/${software}_${runtime}_v$version.zip"  # Target zip filename
     
     # Deploy
     Write-Output "################################
 Building: $runtime"
-    dotnet publish $project -o "$publishFolder\$runtime" -c $buildWith -r $runtime $extraCmd
+    dotnet publish $project -o "$publishFolder/$runtime" -c $buildWith -r $runtime $extraCmd
+    if(!$runtime.Equals('win-x64'))
+    {
+        # Fix permissions
+        wsl chmod +x "$publishFolder/$runtime/UVtools" `|`| :
+        wsl chmod +x "$publishFolder/$runtime/UVtools.sh" `|`| :
+    }
     
     # Cleanup
-    Remove-Item "$releaseFolder\$runtime" -Recurse -ErrorAction Ignore  
+    Remove-Item "$releaseFolder\$runtime" -Recurse -ErrorAction Ignore
+    Remove-Item "$objFolder\$runtime" -Recurse -ErrorAction Ignore
+    Write-Output "$releaseFolder\$runtime"
+    
     foreach ($excludeObj in $obj.Value.exclude) {
         Write-Output "Excluding: $excludeObj"
         Remove-Item "$publishFolder\$runtime\$excludeObj" -Recurse -ErrorAction Ignore
     }
 
-    # Zip
-    Write-Output "Compressing $runtime to: $targetZip"
-    [System.IO.Compression.ZipFile]::CreateFromDirectory("$publishFolder\$runtime", $targetZip, [System.IO.Compression.CompressionLevel]::Optimal, $false, [FixedEncoder]::new())
-    $deployStopWatch.Stop()
+    foreach ($includeObj in $obj.Value.include) {
+        Write-Output "Including: $includeObj"
+        Copy-Item "$platformsFolder\$runtime\$includeObj" -Destination "$publishFolder\$runtime"  -Recurse -ErrorAction Ignore
+    }
 
+    Write-Output "Compressing $runtime to: $targetZip"
+    Write-Output $targetZip "$publishFolder/$runtime"
+    
+    if($runtime.Equals('osx-x64')){
+        $macAppFolder = "${software}.app"
+        $macPublishFolder = "$publishFolder/${macAppFolder}"
+        $macInfoplist = "$platformsFolder/$runtime/Info.plist"
+        $macOutputInfoplist = "$macPublishFolder/Contents"
+        $macTargetZipLegacy = "$publishFolder/${software}_${runtime}-legacy_v$version.zip"
+
+        New-Item -ItemType directory -Path "$macPublishFolder"
+        New-Item -ItemType directory -Path "$macPublishFolder/Contents"
+        New-Item -ItemType directory -Path "$macPublishFolder/Contents/MacOS"
+        New-Item -ItemType directory -Path "$macPublishFolder/Contents/Resources"
+
+        
+        Copy-Item "$macIcns" -Destination "$macPublishFolder/Contents/Resources"
+        ((Get-Content -Path "$macInfoplist") -replace '#VERSION',"$version") | Set-Content -Path "$macOutputInfoplist/Info.plist"
+        wsl cp -a "$publishFolder/$runtime/." "$macPublishFolder/Contents/MacOS"
+
+        wsl cd "$publishFolder/" `&`& pwd `&`& zip -r "../$targetZip" "$macAppFolder/*"
+        wsl cd "$publishFolder/$runtime" `&`& pwd `&`& zip -r "../../$macTargetZipLegacy" .
+        
+    }
+    else {
+        wsl cd "$publishFolder/$runtime" `&`& pwd `&`& zip -r "../../$targetZip" .
+    }
+
+    # Zip
+    #Write-Output "Compressing $runtime to: $targetZip"
+    #Write-Output $targetZip "$publishFolder/$runtime"
+    #[System.IO.Compression.ZipFile]::CreateFromDirectory("$publishFolder\$runtime", $targetZip, [System.IO.Compression.CompressionLevel]::Optimal, $false, [FixedEncoder]::new())
+	#wsl cd "$publishFolder/$runtime" `&`& pwd `&`& chmod +x -f "./$software" `|`| : `&`& zip -r "../../$targetZip" "."
+    $deployStopWatch.Stop()
     Write-Output "Took: $($deployStopWatch.Elapsed)
 ################################
 "
 }
 
 # Universal package
+<#
 $deployStopWatch.Restart()
 $runtime = "universal-x86-x64"
 $targetZip = "$publishFolder\${software}_${runtime}_v$version.zip"
@@ -143,7 +200,7 @@ Write-Output "Took: $($deployStopWatch.Elapsed)
 ################################
 "
 $stopWatch.Stop()
-
+#>
 
 # MSI Installer for Windows
 if($enableMSI)

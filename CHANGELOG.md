@@ -1,6 +1,65 @@
 # Changelog
 
-## 25/11/2020 - v2.0.0
+## 07/01/2021 - v2.1.3
+
+* (Add) PrusaSlicer printers:
+   * Peopoly Phenom XXL
+   * QIDI 3D ibox mono
+   * Wanhao CGR Mini Mono
+   * Wanhao CGR Mono
+* (Add) PrusaSlicer light supports profiles
+* (Add) Calibration - Elephant Foot: Mirror output
+* (Add) Calibration - XYZ Accuracy: Mirror output
+* (Add) Calibration - Tolerance: Mirror output
+* (Add) Calibration - Grayscale: Mirror output
+* (Add) Scripts on github
+* (Change) Save 'Display Width' and 'Height' to calibration profiles and load them back only if file format aware from these properties
+* (Fix) Tool - Morph: Set a rectangular 3x3 kernel by default
+* (Fix) Tool - Blur: Set a rectangular 3x3 kernel by default
+* (Fix) Calibration - Elephant Foot: Include part scale on profile text
+* (Fix) MSI dont store instalation path (#121)
+
+## 03/01/2021 - v2.1.2
+
+* (Add) Pixel editor - Text: Preview of text operation (#120)
+* (Add) Calibration - Elephant Foot: 'Part scale' factor to scale up test parts
+* (Change) Allow tools text descriptions to be selectable and copied
+* (Fix) Pixel editor - Text: Round font scale to avoid precision error
+
+## 03/01/2021 - v2.1.1
+
+* (Add) About box: Primary screen identifier and open on screen identifier
+* (Add) Calibrator - External tests
+* (Change) Rewrite 'Action - Import Layer(s)' to support file formats and add the followig importation types:
+  * **Insert:** Insert layers. (Requires images with bounds equal or less than file resolution)
+  * **Replace:** Replace layers. (Requires images with bounds equal or less than file resolution)
+  * **Stack:** Stack layers content. (Requires images with bounds equal or less than file resolution)
+  * **Merge:** Merge/Sum layers content. (Requires images with same resolution)
+  * **Subtract:** Subtract layers content. (Requires images with same resolution)
+  * **BitwiseAnd:** Perform a 'bitwise and' operation over layer pixels. (Requires images with same resolution)
+  * **BitwiseOr:** Perform a 'bitwise or' operation over layer pixels. (Requires images with same resolution)
+  * **BitwiseXOr:** Perform a 'bitwise xor' operation over layer pixels. (Requires images with same resolution)
+* (Change) Icon for Tool - Raft Relief
+* (Change) Windows and dialogs max size are now calculated to where window is opened instead of use the primary or first screen all the time
+
+## 29/12/2020 - v2.1.0
+
+* (Add) Tool - Redraw model/supports: Redraw the model or supports with a set brightness. This requires an extra sliced file from same object but without any supports and raft, straight to the build plate.
+* (Add) Tool - Raft Relief:
+    * Allow ignore a number of layer(s) to start only after that number, detault is 0
+    * Allow set a pixel brightness for the operation, detault is 0
+    * New "dimming" type, works like relief but instead of drill raft it set to a brightness level
+* (Add) Arch-x64 package (#104)
+* (Fix) A OS dependent startup crash when there's no primary screen set (#115)
+* (Fix) Tool - Re height: Able to cancel the job
+* (Fix) Unable to save "Calibration - Tolerance" profiles
+* (Change) Core: Move all operations code from LayerManager and Layer to it own Operation* class within a Execute method (Abstraction)
+* (Change) sh UVtools.sh to run independent UVtools instance first, if not found it will fallback to dotnet UVtools.dll
+* (Change) Compile and zip project with WSL to keep the +x (execute) attribute for linux and unix systems
+* (Change) MacOS builds are now packed as an application bundle (Auto-updater disabled for now)
+* (Remove) Universal package from builds/releases
+
+## 25/12/2020 - v2.0.0
 
 This release bump the major version due the introduction of .NET 5.0, the discontinuation old UVtools GUI project and the new calibration wizards.
 * (Upgrade) From .NET Core 3.1 to .NET 5.0
@@ -11,7 +70,6 @@ This release bump the major version due the introduction of .NET 5.0, the discon
   * **Take into account the screen scale factor to limit the dialogs windows maximum size**: Due wrong information UVtools can clamp the windows maximum size when you have plenty more avaliable or when use in a secondary monitor. If is the case disable this option
   * **Horizontal limiting margin:** Limits windows and dialogs maximum width to the screen resolution less this margin
   * **Vertical limiting margin:** Limits windows and dialogs maximum height to the screen resolution less this margin
-* (Add) Setting - General: Take into account the screen scale factor to limit the dialogs windows maximum size. Due wrong information UVtools can cap the windows maximum size when you have plenty more avaliable or when use in a secondary monitor. If is the case disable this option
 * (Add) Ctrl + Shift + Z to undo and edit the last operation (If contain a valid operation)
 * (Add) Allow to deselect the current selected profile
 * (Add) Allow to set a default profile to load in when open a tool

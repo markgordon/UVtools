@@ -524,8 +524,8 @@ namespace UVtools.WPF.Windows
             DispatcherTimer.Run(() =>
             {
                 if (Bounds.Width == 0) return true;
-                ScrollViewerMaxHeight = App.MaxWindowSize.Height - Bounds.Height + ToolControl.Bounds.Height - UserSettings.Instance.General.WindowsVerticalMargin;
-                DescriptionMaxWidth = Math.Max(Bounds.Width, ToolControl.Bounds.Width) - 40;
+                ScrollViewerMaxHeight = this.GetScreenWorkingArea().Height - Bounds.Height + ToolControl.Bounds.Height - UserSettings.Instance.General.WindowsVerticalMargin;
+                DescriptionMaxWidth = Math.Max(Bounds.Width, ToolControl.Bounds.Width) - 10;
                 Description = toolControl.BaseOperation.Description;
                 return false;
             }, TimeSpan.FromMilliseconds(1));

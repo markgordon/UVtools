@@ -37,12 +37,17 @@ namespace UVtools.Core.Extensions
         /// <returns>A <see cref="Span{T}"/> containing all pixels in data memory</returns>
         public static unsafe Span<T> GetPixelSpan<T>(this Mat mat)
         {
-            return new Span<T>(mat.DataPointer.ToPointer(), mat.GetLength());
+            return new(mat.DataPointer.ToPointer(), mat.GetLength());
+        }
+
+        public static unsafe Span<byte> GetPixelSpanByte(this Mat mat)
+        {
+            return new(mat.DataPointer.ToPointer(), mat.GetLength());
         }
 
         public static unsafe Span<T> GetPixelSpan<T>(this Mat mat, int length, int offset = 0)
         {
-            return new Span<T>(IntPtr.Add(mat.DataPointer, offset).ToPointer(), length);
+            return new(IntPtr.Add(mat.DataPointer, offset).ToPointer(), length);
         }
 
         public static Span<T> GetSinglePixelSpan<T>(this Mat mat, int x, int y)
@@ -81,11 +86,9 @@ namespace UVtools.Core.Extensions
         {
             var halfWidth = src.Width / 2.0f;
             var halfHeight = src.Height / 2.0f;
-            using (var translateTransform = new Matrix<double>(2, 3))
-            {
-                CvInvoke.GetRotationMatrix2D(new PointF(halfWidth, halfHeight), -angle, 1.0, translateTransform);
-                CvInvoke.WarpAffine(src, src, translateTransform, src.Size);
-            }
+            using var translateTransform = new Matrix<double>(2, 3);
+            CvInvoke.GetRotationMatrix2D(new PointF(halfWidth, halfHeight), -angle, 1.0, translateTransform);
+            CvInvoke.WarpAffine(src, src, translateTransform, src.Size);
         }
 
         /// <summary>
@@ -246,6 +249,24 @@ namespace UVtools.Core.Extensions
             }
             
             return mat;
+        }
+
+        public static Mat InitMat(Size size, MCvScalar scalar, int channels = 1, DepthType depthType = DepthType.Cv8U)
+        {
+            var mat = new Mat(size, depthType, channels);
+            mat.SetTo(scalar);
+            return mat;
+        }
+
+        public static Mat RoiFromCenter(this Mat mat, Size size)
+        {
+            if (size == mat.Size) return mat;
+            return new Mat(mat, new Rectangle(
+                 mat.Size.Width / 2 - size.Width / 2,
+                 mat.Size.Height / 2 - size.Height / 2,
+                 size.Width,
+                 size.Height
+                ));
         }
 
     }

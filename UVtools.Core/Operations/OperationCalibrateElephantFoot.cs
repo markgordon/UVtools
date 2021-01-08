@@ -10,12 +10,14 @@ using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Text;
+using System.Threading.Tasks;
 using System.Xml.Serialization;
 using Emgu.CV;
 using Emgu.CV.CvEnum;
 using Emgu.CV.Structure;
 using Emgu.CV.Util;
 using UVtools.Core.Extensions;
+using UVtools.Core.FileFormats;
 using UVtools.Core.Objects;
 
 namespace UVtools.Core.Operations
@@ -31,7 +33,10 @@ namespace UVtools.Core.Operations
         private ushort _normalLayers = 70;
         private decimal _bottomExposure = 60;
         private decimal _normalExposure = 12;
+        private decimal _partScale = 1;
         private byte _margin = 30;
+        private bool _enableAntiAliasing = true;
+        private bool _mirrorOutput;
         private bool _isErodeEnabled = true;
         private byte _erodeStartIteration = 2;
         private byte _erodeEndIteration = 6;
@@ -42,7 +47,6 @@ namespace UVtools.Core.Operations
         private byte _dimmingEndBrightness = 200;
         private byte _dimmingBrightnessSteps = 20;
         private bool _outputOriginalPart = true;
-        private bool _enableAntiAliasing = true;
 
         #endregion
 
@@ -96,10 +100,10 @@ namespace UVtools.Core.Operations
             var result = $"[Layer Height: {_layerHeight}] " +
                          $"[Layers: {_bottomLayers}/{_normalLayers}] " +
                          $"[Exposure: {_bottomExposure}/{_normalExposure}] " +
-                         $"[Margin: {_margin}] [ORI: {_outputOriginalPart}]" +
+                         $"[Scale: {_partScale}] [Margin: {_margin}] [ORI: {_outputOriginalPart}]" +
                          $"[E: {_erodeStartIteration}-{_erodeEndIteration} S{_erodeIterationSteps}] " +
                          $"[D: W{_dimmingWallThickness} B{_dimmingStartBrightness}-{_dimmingEndBrightness} S{_dimmingBrightnessSteps}] " +
-                         $"[AA: {_enableAntiAliasing}]";
+                         $"[AA: {_enableAntiAliasing}] [Mirror: {_mirrorOutput}]";
             if (!string.IsNullOrEmpty(ProfileName)) result = $"{ProfileName}: {result}";
             return result;
         }
@@ -194,6 +198,12 @@ namespace UVtools.Core.Operations
             set => RaiseAndSetIfChanged(ref _normalExposure, Math.Round(value, 2));
         }
 
+        public decimal PartScale
+        {
+            get => _partScale;
+            set => RaiseAndSetIfChanged(ref _partScale, Math.Round(value, 2));
+        }
+
         public byte Margin
         {
             get => _margin;
@@ -214,6 +224,12 @@ namespace UVtools.Core.Operations
         {
             get => _enableAntiAliasing;
             set => RaiseAndSetIfChanged(ref _enableAntiAliasing, value);
+        }
+
+        public bool MirrorOutput
+        {
+            get => _mirrorOutput;
+            set => RaiseAndSetIfChanged(ref _mirrorOutput, value);
         }
 
         public bool IsErodeEnabled
@@ -335,7 +351,7 @@ namespace UVtools.Core.Operations
 
         private bool Equals(OperationCalibrateElephantFoot other)
         {
-            return _layerHeight == other._layerHeight && _syncLayers == other._syncLayers && _bottomLayers == other._bottomLayers && _normalLayers == other._normalLayers && _bottomExposure == other._bottomExposure && _normalExposure == other._normalExposure && _margin == other._margin && _isErodeEnabled == other._isErodeEnabled && _erodeStartIteration == other._erodeStartIteration && _erodeEndIteration == other._erodeEndIteration && _erodeIterationSteps == other._erodeIterationSteps && _isDimmingEnabled == other._isDimmingEnabled && _dimmingWallThickness == other._dimmingWallThickness && _dimmingStartBrightness == other._dimmingStartBrightness && _dimmingEndBrightness == other._dimmingEndBrightness && _dimmingBrightnessSteps == other._dimmingBrightnessSteps && _outputOriginalPart == other._outputOriginalPart && _enableAntiAliasing == other._enableAntiAliasing;
+            return _layerHeight == other._layerHeight && _syncLayers == other._syncLayers && _bottomLayers == other._bottomLayers && _normalLayers == other._normalLayers && _bottomExposure == other._bottomExposure && _normalExposure == other._normalExposure && _partScale == other._partScale && _margin == other._margin && _isErodeEnabled == other._isErodeEnabled && _erodeStartIteration == other._erodeStartIteration && _erodeEndIteration == other._erodeEndIteration && _erodeIterationSteps == other._erodeIterationSteps && _isDimmingEnabled == other._isDimmingEnabled && _dimmingWallThickness == other._dimmingWallThickness && _dimmingStartBrightness == other._dimmingStartBrightness && _dimmingEndBrightness == other._dimmingEndBrightness && _dimmingBrightnessSteps == other._dimmingBrightnessSteps && _outputOriginalPart == other._outputOriginalPart && _enableAntiAliasing == other._enableAntiAliasing && _mirrorOutput == other._mirrorOutput;
         }
 
         public override bool Equals(object obj)
@@ -352,7 +368,11 @@ namespace UVtools.Core.Operations
             hashCode.Add(_normalLayers);
             hashCode.Add(_bottomExposure);
             hashCode.Add(_normalExposure);
+            hashCode.Add(_partScale);
             hashCode.Add(_margin);
+            hashCode.Add(_enableAntiAliasing);
+            hashCode.Add(_outputOriginalPart);
+            hashCode.Add(_mirrorOutput);
             hashCode.Add(_isErodeEnabled);
             hashCode.Add(_erodeStartIteration);
             hashCode.Add(_erodeEndIteration);
@@ -362,8 +382,7 @@ namespace UVtools.Core.Operations
             hashCode.Add(_dimmingStartBrightness);
             hashCode.Add(_dimmingEndBrightness);
             hashCode.Add(_dimmingBrightnessSteps);
-            hashCode.Add(_outputOriginalPart);
-            hashCode.Add(_enableAntiAliasing);
+            
             return hashCode.ToHashCode();
         }
 
@@ -383,8 +402,8 @@ namespace UVtools.Core.Operations
 
             layers[0] = EmguExtensions.InitMat(Resolution);
             LineType lineType = _enableAntiAliasing ? LineType.AntiAlias : LineType.EightConnected;
-            const int length = 250;
-            const int triangleLength = 50;
+            int length = (int) (250 * _partScale);
+            int triangleLength = (int) (50 * _partScale);
             const byte startX = 2;
             const byte startY = 2;
             int x = startX;
@@ -409,7 +428,7 @@ namespace UVtools.Core.Operations
             y += triangleLength;
             addPoint();
 
-            y += 50;
+            y += triangleLength;
             addPoint();
 
             x += triangleLength;
@@ -438,16 +457,15 @@ namespace UVtools.Core.Operations
             addPoint();
 
 
-            const byte ellipseHeight = 50;
+            int ellipseHeight = (int) (50 * _partScale);
             
             maxY += ellipseHeight;
             using Mat shape = EmguExtensions.InitMat(new Size(maxX + startX, maxY + startY));
             CvInvoke.FillPoly(shape, new VectorOfPoint(pointList.ToArray()), EmguExtensions.WhiteByte, lineType);
-            CvInvoke.Circle(shape, new Point(0, 0), length / 4, EmguExtensions.BlackByte,
-                -1, lineType);
+            CvInvoke.Circle(shape, new Point(0, 0), length / 4, EmguExtensions.BlackByte, -1, lineType);
             CvInvoke.Ellipse(shape, new Point(maxX / 2, maxY - ellipseHeight), new Size(maxX / 3, ellipseHeight), 0, 0, 360,
                 EmguExtensions.WhiteByte, -1, lineType);
-            CvInvoke.Circle(shape, new Point(length / 2, maxY - 100), length / 5, EmguExtensions.BlackByte, -1, lineType);
+            CvInvoke.Circle(shape, new Point(length / 2, (int) (maxY - 100 * _partScale)), length / 5, EmguExtensions.BlackByte, -1, lineType);
 
             int currentX = 0;
             int currentY = 0;
@@ -455,16 +473,17 @@ namespace UVtools.Core.Operations
             maxX = 0;
 
             const FontFace font = FontFace.HersheyDuplex;
-            const byte fontStartX = 30;
-            const byte fontStartY = length / 4 + 42;
-            const double fontScale = 1.3;
-            const byte fontThickness = 3;
-            const byte fontMargin = 42;
+            int fontMargin = (int)(42 * _partScale);
+            int fontStartX = (int) (30 * _partScale);
+            int fontStartY = length / 4 + fontMargin;
+            double fontScale = 1.3 * (double) _partScale;
+            int fontThickness = (int) (3 * _partScale);
+            
 
             void addText(Mat mat, ushort number, params string[] text)
             {
-                CvInvoke.PutText(mat, number.ToString(), new Point(100, 55), font, 1.5, EmguExtensions.BlackByte, 4, lineType);
-                CvInvoke.PutText(mat, "UVtools EP", new Point(fontStartX, fontStartY), font, 0.8, EmguExtensions.BlackByte, 2, lineType);
+                CvInvoke.PutText(mat, number.ToString(), new Point((int) (100 * _partScale), (int) (55 * _partScale)), font, 1.5 * (double) _partScale, EmguExtensions.BlackByte, (int) (4 * _partScale), lineType);
+                CvInvoke.PutText(mat, "UVtools EP", new Point(fontStartX, fontStartY), font, 0.8 * (double) _partScale, EmguExtensions.BlackByte, (int) (2 * _partScale), lineType);
                 CvInvoke.PutText(mat, $"{Microns}um", new Point(fontStartX, fontStartY + fontMargin), font, fontScale, EmguExtensions.BlackByte, fontThickness, lineType);
                 CvInvoke.PutText(mat, $"{BottomExposure}|{NormalExposure}s", new Point(fontStartX, fontStartY + fontMargin * 2), font, fontScale, EmguExtensions.BlackByte, fontThickness, lineType);
                 if (text is null) return;
@@ -523,8 +542,7 @@ namespace UVtools.Core.Operations
                         new Rectangle(new Point(currentX, currentY), shape.Size)))
                     using (var erode = new Mat())
                     {
-                        CvInvoke.Erode(shape, erode, ErodeKernel.Matrix, ErodeKernel.Anchor, iteration, BorderType.Reflect101,
-                            default);
+                        CvInvoke.Erode(shape, erode, ErodeKernel.Matrix, ErodeKernel.Anchor, iteration, BorderType.Reflect101, default);
                         erode.CopyTo(roi);
                         addText(roi, count, $"E: {iteration}i");
                     }
@@ -576,6 +594,11 @@ namespace UVtools.Core.Operations
                 }
             }
 
+            if (_mirrorOutput)
+            {
+                Parallel.ForEach(layers, mat => CvInvoke.Flip(mat, mat, FlipType.Horizontal));
+            }
+
             // Preview
             //layers[2] = new Mat(layers[0], new Rectangle(0, 0, Math.Min(layers[0].Width, maxX), Math.Min(layers[0].Height, currentY)));
 
@@ -608,6 +631,65 @@ namespace UVtools.Core.Operations
                 
                 thumbnail.Save("D:\\Thumbnail.png");*/
             return thumbnail;
+        }
+
+        public override bool Execute(FileFormat slicerFile, OperationProgress progress = null)
+        {
+            progress ??= new OperationProgress();
+            progress.Reset(ProgressAction, 3);
+            slicerFile.SuppressRebuildProperties = true;
+
+            var newLayers = new Layer[LayerCount];
+
+            slicerFile.LayerHeight = (float)LayerHeight;
+            slicerFile.BottomExposureTime = (float)BottomExposure;
+            slicerFile.ExposureTime = (float)NormalExposure;
+            slicerFile.BottomLayerCount = BottomLayers;
+
+            var layers = GetLayers();
+            progress++;
+
+
+            var bottomLayer = new Layer(0, layers[0], slicerFile.LayerManager)
+            {
+                IsModified = true
+            };
+            var layer = new Layer(0, layers[1], slicerFile.LayerManager)
+            {
+                IsModified = true
+            };
+            var moveOp = new OperationMove(bottomLayer.BoundingRectangle, layers[0].Size);
+            moveOp.Execute(layers[0]);
+            moveOp.Execute(layers[1]);
+
+            bottomLayer.LayerMat = layers[0];
+            layer.LayerMat = layers[1];
+
+            progress++;
+
+            for (uint layerIndex = 0;
+                layerIndex < LayerCount;
+                layerIndex++)
+            {
+                newLayers[layerIndex] = slicerFile.GetInitialLayerValueOrNormal(layerIndex, bottomLayer.Clone(), layer.Clone());
+            }
+
+            foreach (var mat in layers)
+            {
+                mat.Dispose();
+            }
+
+            
+            if (slicerFile.ThumbnailsCount > 0)
+                slicerFile.SetThumbnails(GetThumbnail());
+
+            progress++;
+
+            slicerFile.LayerManager.Layers = newLayers;
+            slicerFile.SuppressRebuildProperties = false;
+            slicerFile.LayerManager.RebuildLayersProperties();
+
+            return true;
         }
 
         #endregion

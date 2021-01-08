@@ -9,11 +9,13 @@
 using System;
 using System.Drawing;
 using System.Text;
+using System.Threading.Tasks;
 using System.Xml.Serialization;
 using Emgu.CV;
 using Emgu.CV.CvEnum;
 using Emgu.CV.Structure;
 using UVtools.Core.Extensions;
+using UVtools.Core.FileFormats;
 using UVtools.Core.Objects;
 
 namespace UVtools.Core.Operations
@@ -35,6 +37,7 @@ namespace UVtools.Core.Operations
         private decimal _zSize = 15;
         private bool _centerHoleRelief = true;
         private bool _hollowModel = true;
+        private bool _mirrorOutput;
         private decimal _wallThickness = 2.5M;
         private decimal _observedXSize;
         private decimal _observedYSize;
@@ -106,7 +109,7 @@ namespace UVtools.Core.Operations
                          $"[Model: {_outputTLObject.ToByte()}{_outputTCObject.ToByte()}{_outputTRObject.ToByte()}" +
                          $"|{_outputMLObject.ToByte()}{_outputMCObject.ToByte()}{_outputMRObject.ToByte()}" +
                          $"|{_outputBLObject.ToByte()}{_outputBCObject.ToByte()}{_outputBRObject.ToByte()}] " +
-                         $"[Hollow: {_hollowModel} @ {_wallThickness}mm] [Relief: {_centerHoleRelief}]";
+                         $"[Hollow: {_hollowModel} @ {_wallThickness}mm] [Relief: {_centerHoleRelief}] [Mirror: {_mirrorOutput}]";
             if (!string.IsNullOrEmpty(ProfileName)) result = $"{ProfileName}: {result}";
             return result;
         }
@@ -118,7 +121,6 @@ namespace UVtools.Core.Operations
         [XmlIgnore]
         public Size Resolution { get; set; } = Size.Empty;
 
-        [XmlIgnore]
         public decimal DisplayWidth
         {
             get => _displayWidth;
@@ -129,7 +131,6 @@ namespace UVtools.Core.Operations
             }
         }
 
-        [XmlIgnore]
         public decimal DisplayHeight
         {
             get => _displayHeight;
@@ -266,6 +267,12 @@ namespace UVtools.Core.Operations
         {
             get => _hollowModel;
             set => RaiseAndSetIfChanged(ref _hollowModel, value);
+        }
+
+        public bool MirrorOutput
+        {
+            get => _mirrorOutput;
+            set => RaiseAndSetIfChanged(ref _mirrorOutput, value);
         }
 
         public decimal WallThickness
@@ -461,7 +468,7 @@ namespace UVtools.Core.Operations
         
         private bool Equals(OperationCalibrateXYZAccuracy other)
         {
-            return _layerHeight == other._layerHeight && _bottomLayers == other._bottomLayers && _bottomExposure == other._bottomExposure && _normalExposure == other._normalExposure && _topBottomMargin == other._topBottomMargin && _leftRightMargin == other._leftRightMargin && _xSize == other._xSize && _ySize == other._ySize && _zSize == other._zSize && _centerHoleRelief == other._centerHoleRelief && _hollowModel == other._hollowModel && _wallThickness == other._wallThickness && _observedXSize == other._observedXSize && _observedYSize == other._observedYSize && _observedZSize == other._observedZSize && _outputTLObject == other._outputTLObject && _outputTCObject == other._outputTCObject && _outputTRObject == other._outputTRObject && _outputMLObject == other._outputMLObject && _outputMCObject == other._outputMCObject && _outputMRObject == other._outputMRObject && _outputBLObject == other._outputBLObject && _outputBCObject == other._outputBCObject && _outputBRObject == other._outputBRObject;
+            return _layerHeight == other._layerHeight && _bottomLayers == other._bottomLayers && _bottomExposure == other._bottomExposure && _normalExposure == other._normalExposure && _topBottomMargin == other._topBottomMargin && _leftRightMargin == other._leftRightMargin && _xSize == other._xSize && _ySize == other._ySize && _zSize == other._zSize && _centerHoleRelief == other._centerHoleRelief && _hollowModel == other._hollowModel && _wallThickness == other._wallThickness && _observedXSize == other._observedXSize && _observedYSize == other._observedYSize && _observedZSize == other._observedZSize && _outputTLObject == other._outputTLObject && _outputTCObject == other._outputTCObject && _outputTRObject == other._outputTRObject && _outputMLObject == other._outputMLObject && _outputMCObject == other._outputMCObject && _outputMRObject == other._outputMRObject && _outputBLObject == other._outputBLObject && _outputBCObject == other._outputBCObject && _outputBRObject == other._outputBRObject && _mirrorOutput == other._mirrorOutput;
         }
 
         public override bool Equals(object obj)
@@ -483,6 +490,7 @@ namespace UVtools.Core.Operations
             hashCode.Add(_zSize);
             hashCode.Add(_centerHoleRelief);
             hashCode.Add(_hollowModel);
+            hashCode.Add(_mirrorOutput);
             hashCode.Add(_wallThickness);
             hashCode.Add(_observedXSize);
             hashCode.Add(_observedYSize);
@@ -672,6 +680,11 @@ namespace UVtools.Core.Operations
                 }
             }
 
+            if (_mirrorOutput)
+            {
+                Parallel.ForEach(layers, mat => CvInvoke.Flip(mat, mat, FlipType.Horizontal));
+            }
+
             return layers;
         }
 
@@ -701,6 +714,51 @@ namespace UVtools.Core.Operations
                 
                 thumbnail.Save("D:\\Thumbnail.png");*/
             return thumbnail;
+        }
+
+        public override bool Execute(FileFormat slicerFile, OperationProgress progress = null)
+        {
+            progress ??= new OperationProgress();
+            progress.Reset(ProgressAction, LayerCount);
+
+            slicerFile.SuppressRebuildProperties = true;
+
+            var newLayers = new Layer[LayerCount];
+
+            slicerFile.LayerHeight = (float)LayerHeight;
+            slicerFile.BottomExposureTime = (float)BottomExposure;
+            slicerFile.ExposureTime = (float)NormalExposure;
+            slicerFile.BottomLayerCount = BottomLayers;
+
+            var layers = GetLayers();
+
+            var bottomLayer = new Layer(0, layers[0], slicerFile.LayerManager)
+            {
+                IsModified = true
+            };
+            var layer = new Layer(0, layers[1], slicerFile.LayerManager)
+            {
+                IsModified = true
+            };
+
+            for (uint layerIndex = 0; layerIndex < LayerCount; layerIndex++)
+            {
+                newLayers[layerIndex] = slicerFile.GetInitialLayerValueOrNormal(layerIndex, bottomLayer.Clone(), layer.Clone());
+                progress++;
+            }
+
+            foreach (var mat in layers)
+            {
+                mat.Dispose();
+            }
+
+            if (slicerFile.ThumbnailsCount > 0)
+                slicerFile.SetThumbnails(GetThumbnail());
+
+            slicerFile.LayerManager.Layers = newLayers;
+            slicerFile.LayerManager.RebuildLayersProperties();
+            slicerFile.SuppressRebuildProperties = false;
+            return true;
         }
 
         #endregion

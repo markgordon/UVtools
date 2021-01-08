@@ -9,12 +9,14 @@
 using System;
 using System.Drawing;
 using System.Text;
+using System.Threading.Tasks;
 using System.Xml.Serialization;
 using Emgu.CV;
 using Emgu.CV.CvEnum;
 using Emgu.CV.Structure;
 using Emgu.CV.Util;
 using UVtools.Core.Extensions;
+using UVtools.Core.FileFormats;
 using UVtools.Core.Objects;
 
 namespace UVtools.Core.Operations
@@ -32,6 +34,8 @@ namespace UVtools.Core.Operations
         private decimal _normalExposure = 12;
         private ushort _outerMargin = 200;
         private ushort _innerMargin = 50;
+        private bool _enableAntiAliasing = true;
+        private bool _mirrorOutput;
         private byte _startBrightness = 175;
         private byte _endBrightness = 255;
         private byte _brightnessSteps = 10;
@@ -41,7 +45,6 @@ namespace UVtools.Core.Operations
         private byte _lineDivisionThickness = 30;
         private byte _lineDivisionBrightness = 255;
         private short _textXOffset;
-        private bool _enableAntiAliasing = true;
 
         #endregion
 
@@ -88,9 +91,9 @@ namespace UVtools.Core.Operations
             var result = $"[Layer Height: {_layerHeight}] " +
                          $"[Layers: {_bottomLayers}/{_interfaceLayers}/{_normalLayers}] " +
                          $"[Exposure: {_bottomExposure}/{_normalExposure}] " +
-                         $"[Margin: {_outerMargin}] " +
+                         $"[Margin: {_outerMargin}/{_innerMargin}] " +
                          $"[B: {_startBrightness}-{_endBrightness} S{_brightnessSteps}] " +
-                         $"[AA: {_enableAntiAliasing}]";
+                         $"[AA: {_enableAntiAliasing}] [Mirror: {_mirrorOutput}]";
             if (!string.IsNullOrEmpty(ProfileName)) result = $"{ProfileName}: {result}";
             return result;
         }
@@ -190,6 +193,18 @@ namespace UVtools.Core.Operations
             set => RaiseAndSetIfChanged(ref _innerMargin, value);
         }
 
+        public bool EnableAntiAliasing
+        {
+            get => _enableAntiAliasing;
+            set => RaiseAndSetIfChanged(ref _enableAntiAliasing, value);
+        }
+
+        public bool MirrorOutput
+        {
+            get => _mirrorOutput;
+            set => RaiseAndSetIfChanged(ref _mirrorOutput, value);
+        }
+
         public byte StartBrightness
         {
             get => _startBrightness;
@@ -274,19 +289,13 @@ namespace UVtools.Core.Operations
             set => RaiseAndSetIfChanged(ref _textXOffset, value);
         }
 
-        public bool EnableAntiAliasing
-        {
-            get => _enableAntiAliasing;
-            set => RaiseAndSetIfChanged(ref _enableAntiAliasing, value);
-        }
-
         #endregion
 
         #region Equality
 
         private bool Equals(OperationCalibrateGrayscale other)
         {
-            return _layerHeight == other._layerHeight && _bottomLayers == other._bottomLayers && _normalLayers == other._normalLayers && _interfaceLayers == other._interfaceLayers && _bottomExposure == other._bottomExposure && _normalExposure == other._normalExposure && _outerMargin == other._outerMargin && _innerMargin == other._innerMargin && _startBrightness == other._startBrightness && _endBrightness == other._endBrightness && _brightnessSteps == other._brightnessSteps && _enableCenterHoleRelief == other._enableCenterHoleRelief && _centerHoleDiameter == other._centerHoleDiameter && _enableLineDivisions == other._enableLineDivisions && _lineDivisionThickness == other._lineDivisionThickness && _lineDivisionBrightness == other._lineDivisionBrightness && _textXOffset == other._textXOffset && _enableAntiAliasing == other._enableAntiAliasing;
+            return _layerHeight == other._layerHeight && _bottomLayers == other._bottomLayers && _normalLayers == other._normalLayers && _interfaceLayers == other._interfaceLayers && _bottomExposure == other._bottomExposure && _normalExposure == other._normalExposure && _outerMargin == other._outerMargin && _innerMargin == other._innerMargin && _startBrightness == other._startBrightness && _endBrightness == other._endBrightness && _brightnessSteps == other._brightnessSteps && _enableCenterHoleRelief == other._enableCenterHoleRelief && _centerHoleDiameter == other._centerHoleDiameter && _enableLineDivisions == other._enableLineDivisions && _lineDivisionThickness == other._lineDivisionThickness && _lineDivisionBrightness == other._lineDivisionBrightness && _textXOffset == other._textXOffset && _enableAntiAliasing == other._enableAntiAliasing && _mirrorOutput == other._mirrorOutput;
         }
 
         public override bool Equals(object obj)
@@ -305,6 +314,8 @@ namespace UVtools.Core.Operations
             hashCode.Add(_normalExposure);
             hashCode.Add(_outerMargin);
             hashCode.Add(_innerMargin);
+            hashCode.Add(_enableAntiAliasing);
+            hashCode.Add(_mirrorOutput);
             hashCode.Add(_startBrightness);
             hashCode.Add(_endBrightness);
             hashCode.Add(_brightnessSteps);
@@ -314,7 +325,6 @@ namespace UVtools.Core.Operations
             hashCode.Add(_lineDivisionThickness);
             hashCode.Add(_lineDivisionBrightness);
             hashCode.Add(_textXOffset);
-            hashCode.Add(_enableAntiAliasing);
             return hashCode.ToHashCode();
         }
 
@@ -415,6 +425,11 @@ namespace UVtools.Core.Operations
                 new Point(center.X - radius / 2, center.Y + radius / 2 - 40),
                 fontFace, fontScale, EmguExtensions.BlackByte, fontThickness, lineType, true);
 
+            if (_mirrorOutput)
+            {
+                Parallel.ForEach(layers, mat => CvInvoke.Flip(mat, mat, FlipType.Horizontal));
+            }
+
             return layers;
         }
 
@@ -435,6 +450,78 @@ namespace UVtools.Core.Operations
             CvInvoke.PutText(thumbnail, $"Divs:{Divisions} Angle:{AngleStep}", new Point(xSpacing, ySpacing * 4), fontFace, fontScale, EmguExtensions.White3Byte, fontThickness);
 
             return thumbnail;
+        }
+
+        public override bool Execute(FileFormat slicerFile, OperationProgress progress = null)
+        {
+            progress ??= new OperationProgress();
+            progress.Reset(ProgressAction, LayerCount);
+            slicerFile.SuppressRebuildProperties = true;
+
+            var newLayers = new Layer[LayerCount];
+
+            slicerFile.LayerHeight = (float)LayerHeight;
+            slicerFile.BottomExposureTime = (float)BottomExposure;
+            slicerFile.ExposureTime = (float)NormalExposure;
+            slicerFile.BottomLayerCount = BottomLayers;
+
+            var layers = GetLayers();
+            progress++;
+
+
+            var bottomLayer = new Layer(0, layers[0], slicerFile.LayerManager)
+            {
+                IsModified = true
+            };
+            var interfaceLayer = InterfaceLayers > 0 && layers[1] is not null ? new Layer(0, layers[1], slicerFile.LayerManager)
+            {
+                IsModified = true
+            } : null;
+            var layer = new Layer(0, layers[2], slicerFile.LayerManager)
+            {
+                IsModified = true
+            };
+
+            uint layerIndex = 0;
+            for (uint i = 0; i < BottomLayers; i++)
+            {
+                newLayers[layerIndex] = bottomLayer.Clone();
+                progress++;
+                layerIndex++;
+            }
+
+            for (uint i = 0; i < InterfaceLayers; i++)
+            {
+                newLayers[layerIndex] = interfaceLayer.Clone();
+                progress++;
+                layerIndex++;
+            }
+
+
+            for (uint i = 0; i < NormalLayers; i++)
+            {
+                newLayers[layerIndex] = layer.Clone();
+                progress++;
+                layerIndex++;
+            }
+
+            foreach (var mat in layers)
+            {
+                mat?.Dispose();
+            }
+
+
+            if (slicerFile.ThumbnailsCount > 0)
+                slicerFile.SetThumbnails(GetThumbnail());
+
+            progress++;
+
+
+            slicerFile.LayerManager.Layers = newLayers;
+            slicerFile.SuppressRebuildProperties = false;
+            slicerFile.LayerManager.RebuildLayersProperties();
+            
+            return true;
         }
 
         #endregion

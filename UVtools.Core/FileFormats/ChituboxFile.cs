@@ -1624,9 +1624,50 @@ namespace UVtools.Core.FileFormats
 
             progress.Token.ThrowIfCancellationRequested();
         }
+        private void Optimize()
+        {
+            float base_time,base_lift;
+            int layer_num = 0;
+            
+            foreach (var layer in LayerManager.Layers)
+            {
+                layer_num++;
+                base_lift = BottomLiftHeight;
+                //get exposure time of first layer, then gradually draw down
+                if (layer_num > BottomLayerCount)
+                {
+                    var mat = layer.LayerMat;
 
+                    {
+                        using var nonZeroMat = new Mat();
+                        CvInvoke.FindNonZero(mat, nonZeroMat);
+                        var NonZeroPixelCount = (uint)nonZeroMat.Height;
+                        float percent_pixels = NonZeroPixelCount / (float)(ResolutionX * ResolutionY);
+                        float lift_height = (BottomLiftHeight - LiftHeight) * (percent_pixels) + LiftHeight;
+                        layer.LiftHeight = lift_height;
+                        layer.LiftSpeed = (LiftSpeed - BottomLiftSpeed) * (1-percent_pixels) + BottomLiftSpeed;
+                    }
+                    mat.Dispose();
+                }
+                else 
+                {
+                    float[] divisors = { 1,1.3F, 1.6F, 2, 3, 5,6,8,10};
+                    if (layer_num > 1)
+                        //gradually decrease layer exposure time
+                        if (BottomExposureTime / (divisors[layer_num]) > ExposureTime)
+                        {
+                            layer.ExposureTime = BottomExposureTime / (divisors[layer_num]);
+                        }
+                        else
+                        {
+                            layer.ExposureTime = ExposureTime;
+                        }
+                }
+            }
+        }
         public override void SaveAs(string filePath = null, OperationProgress progress = null)
         {
+            Optimize();
             if (RequireFullEncode)
             {
                 if (!string.IsNullOrEmpty(filePath))
