@@ -18,7 +18,6 @@ namespace UVtools.WPF.Controls.Tools
     public class ToolEditParametersControl : ToolControl
     {
         public OperationEditParameters Operation => BaseOperation as OperationEditParameters;
-        public bool SupportPerLayerSettings => App.SlicerFile.SupportPerLayerSettings;
 
         public RowControl[] RowControls;
         private Grid grid;
@@ -60,16 +59,18 @@ namespace UVtools.WPF.Controls.Tools
                 {
                     //DecimalPlaces = modifier.DecimalPlates,
                     VerticalAlignment = VerticalAlignment.Center,
+                    HorizontalAlignment = HorizontalAlignment.Stretch,
                     Minimum = (double) modifier.Minimum,
                     Maximum = (double) modifier.Maximum,
                     Increment = modifier.DecimalPlates == 0 ? 1 : 0.5,
                     Value = (double)modifier.NewValue,
                     Tag = this,
-                    Width = 100,
+                    //Width = 100,
+                    ClipValueToMinMax = true
                 };
                 if (modifier.DecimalPlates > 0)
                 {
-                    NewValue.FormatString = "{0:0.00}";
+                    NewValue.FormatString = "F02";
                 }
 
                 Unit = new TextBlock
@@ -87,7 +88,8 @@ namespace UVtools.WPF.Controls.Tools
                     VerticalAlignment = VerticalAlignment.Center,
                     Tag = this,
                     Padding = new Thickness(5),
-                    Content = new Image {Source = App.GetBitmapFromAsset("/Assets/Icons/undo-16x16.png")}
+                    Content = new Image {Source = App.GetBitmapFromAsset("/Assets/Icons/undo-16x16.png")},
+                    HorizontalAlignment = HorizontalAlignment.Stretch
                 };
                 ResetButton.Click += ResetButtonOnClick;
                 NewValue.ValueChanged += NewValueOnValueChanged;
@@ -110,8 +112,7 @@ namespace UVtools.WPF.Controls.Tools
         {
             InitializeComponent();
 
-            App.SlicerFile.RefreshPrintParametersModifiersValues();
-            BaseOperation = new OperationEditParameters(App.SlicerFile.PrintParameterModifiers);
+            BaseOperation = new OperationEditParameters(SlicerFile);
 
             if (Operation.Modifiers is null || Operation.Modifiers.Length == 0)
             {
@@ -120,9 +121,6 @@ namespace UVtools.WPF.Controls.Tools
             }
 
             grid = this.FindControl<Grid>("grid");
-            PopulateGrid();
-
-            Operation.PropertyChanged += OperationOnPropertyChanged;
         }
 
         public void PopulateGrid()
@@ -187,9 +185,12 @@ namespace UVtools.WPF.Controls.Tools
             switch (callback)
             {
                 case ToolWindow.Callbacks.Init:
+                case ToolWindow.Callbacks.ProfileLoaded:
                     ParentWindow.IsButton1Visible = true;
                     ParentWindow.SelectCurrentLayer();
                     ParentWindow.LayerRangeSync = true;
+                    PopulateGrid();
+                    Operation.PropertyChanged += OperationOnPropertyChanged;
                     break;
                 case ToolWindow.Callbacks.Button1:
                     foreach (var rowControl in RowControls)
@@ -202,9 +203,9 @@ namespace UVtools.WPF.Controls.Tools
 
         private void OperationOnPropertyChanged(object sender, PropertyChangedEventArgs e)
         {
-            if (e.PropertyName == nameof(Operation.LayerIndexStart))
+            if (e.PropertyName == nameof(Operation.LayerIndexStart) && Operation.PerLayerOverride)
             {
-                App.SlicerFile.RefreshPrintParametersPerLayerModifiersValues(Operation.LayerIndexStart);
+                SlicerFile.RefreshPrintParametersPerLayerModifiersValues(Operation.LayerIndexStart);
                 PopulateGrid();
                 return;
             }
@@ -213,12 +214,12 @@ namespace UVtools.WPF.Controls.Tools
                 if (Operation.PerLayerOverride)
                 {
                     Operation.Modifiers = App.SlicerFile.PrintParameterPerLayerModifiers;
-                    App.SlicerFile.RefreshPrintParametersPerLayerModifiersValues(Operation.LayerIndexStart);
+                    SlicerFile.RefreshPrintParametersPerLayerModifiersValues(Operation.LayerIndexStart);
                 }
                 else
                 {
                     Operation.Modifiers = App.SlicerFile.PrintParameterModifiers;
-                    App.SlicerFile.RefreshPrintParametersModifiersValues();
+                    SlicerFile.RefreshPrintParametersModifiersValues();
                 }
 
                 ParentWindow.LayerRangeVisible = Operation.PerLayerOverride;

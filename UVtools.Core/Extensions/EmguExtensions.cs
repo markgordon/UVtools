@@ -8,6 +8,7 @@
 
 using System;
 using System.Drawing;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using Emgu.CV;
 using Emgu.CV.CvEnum;
@@ -63,9 +64,26 @@ namespace UVtools.Core.Extensions
 
         public static unsafe Span<T> GetPixelRowSpan<T>(this Mat mat, int y, int length = 0, int offset = 0)
         {
-            return new Span<T>(IntPtr.Add(mat.DataPointer, y * mat.Step + offset).ToPointer(), length == 0 ? mat.Step : length);
+            return new(IntPtr.Add(mat.DataPointer, y * mat.Step + offset).ToPointer(), length == 0 ? mat.Step : length);
             //return mat.GetPixelSpan<T>().Slice(offset, mat.Step);
         }
+
+        /// <summary>
+        /// Gets if a <see cref="Mat"/> is all zeroed
+        /// </summary>
+        /// <param name="mat"></param>
+        /// <param name="threshold">Pixel brightness threshold</param>
+        /// <returns></returns>
+        public static unsafe bool IsZeroed(this Mat mat, byte threshold = 0)
+        {
+            var ptr = mat.GetBytePointer();
+            for (int i = 0; i < mat.GetLength(); i++)
+            {
+                if (ptr[i] > threshold) return false;
+            }
+            return true;
+        }
+
 
         public static void Transform(this Mat src, double xScale, double yScale, double xTrans = 0, double yTrans = 0, Size dstSize = default, Inter interpolation = Inter.Linear)
         {
@@ -258,15 +276,25 @@ namespace UVtools.Core.Extensions
             return mat;
         }
 
-        public static Mat RoiFromCenter(this Mat mat, Size size)
+        public static Mat RoiFromCenter(this Mat mat, Size targetSize, Rectangle roi)
         {
-            if (size == mat.Size) return mat;
-            return new Mat(mat, new Rectangle(
-                 mat.Size.Width / 2 - size.Width / 2,
-                 mat.Size.Height / 2 - size.Height / 2,
-                 size.Width,
-                 size.Height
-                ));
+            if (targetSize == mat.Size) return mat;
+            var newMat = InitMat(targetSize);
+
+            var roiMat = new Mat(mat, roi);
+
+
+            //int xStart = mat.Width / 2 - targetSize.Width / 2;
+            //int yStart = mat.Height / 2 - targetSize.Height / 2;
+
+            var newMatRoi = new Mat(newMat, new Rectangle(
+                targetSize.Width / 2 - roi.Width / 2,
+                targetSize.Height / 2 - roi.Height / 2,
+                roi.Width,
+                roi.Height
+            ));
+            roiMat.CopyTo(newMatRoi);
+            return newMat;
         }
 
     }

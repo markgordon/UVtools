@@ -1,47 +1,47 @@
-﻿<Window xmlns="https://github.com/avaloniaui"
+﻿<controls:WindowEx xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:controls="clr-namespace:UVtools.WPF.Controls"
         mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
         x:Class="UVtools.WPF.Windows.ToolWindow"
         CanResize="False"
-        SizeToContent="WidthAndHeight"
+        SizeToContent="Width"
         WindowStartupLocation="CenterOwner"
         Title="Tool"
         Icon="/Assets/Icons/UVtools.ico">
-  <StackPanel Orientation="Vertical">
+
+
+    <Grid RowDefinitions="Auto,Auto,Auto,Auto,*,Auto">
     
     <!-- Description -->
-    <Border
+    <Border Grid.Row="0"
       Background="WhiteSmoke"
       Padding="10"
-      IsVisible="{Binding Description, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
-      >
-      <Panel>
-        <TextBox
-          HorizontalAlignment="Left"
-          TextWrapping="Wrap"
-          MaxWidth="{Binding DescriptionMaxWidth}"
-          FontSize="16"
-          IsReadOnly="True"
-          AcceptsReturn="True"
-          Background="Transparent"
-          CaretBrush="Transparent"
-          BorderBrush="Transparent"
-          Watermark="Description:"
-          UseFloatingWatermark="True"
-          Padding="5"
-          Width="Infinity"
-          Text="{Binding Description}"/>
-      </Panel>
+      IsVisible="{Binding Description, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+        <Expander IsExpanded="{Binding Settings.General.ExpandDescriptions}">
+            <Expander.Header>
+                <TextBlock Text="Description (Click to toggle)"
+                           Width="{Binding ExpanderHeaderMaxWidth}"
+                           FontWeight="Bold"
+                           Cursor="Hand"/>
+            </Expander.Header>
+        <TextBox Classes="TransparentReadOnly"
+                 HorizontalAlignment="Left"
+                 Width="Infinity"
+                 MaxWidth="{Binding DescriptionMaxWidth}"
+                 FontSize="16"
+                 Watermark="Description:"
+                 Padding="5"
+                 Text="{Binding Description}"/>
+        </Expander>
     </Border>
 
     <!-- Layer Range -->
-    <Border
+    <Border Grid.Row="1"
       Background="WhiteSmoke"
+      Classes="GroupBox"
       Margin="5"
-      BorderBrush="LightBlue"
-      BorderThickness="4"
       IsVisible="{Binding LayerRangeVisible}">
 
       <StackPanel Orientation="Vertical">
@@ -62,10 +62,9 @@
             Content="Synchronize"/>
         </Grid>
         
-
         <Grid
           RowDefinitions="Auto,5,Auto"
-          ColumnDefinitions="Auto,100,Auto,100,150"
+          ColumnDefinitions="Auto,150,Auto,150,Auto"
           Margin="15">
           <TextBlock
             Grid.Row="0"
@@ -107,6 +106,7 @@
             Grid.Column="4"
             Margin="10,0,0,0"
             VerticalAlignment="Stretch"
+            VerticalContentAlignment="Center"
             Padding="10,0,10,0"
             Content="Select ⮟"
             Command="{Binding OpenContextMenu}"
@@ -161,15 +161,16 @@
           <TextBlock
             Grid.Row="2" Grid.Column="1"
             HorizontalAlignment="Center"
-            Text="{Binding LayerStartMM, StringFormat=(\{0\}mm)}" />
+            Text="{Binding LayerStartMM, StringFormat=(\{0:F2\}mm)}" />
 
           <TextBlock
             Grid.Row="2" Grid.Column="3"
             HorizontalAlignment="Center"
-            Text="{Binding LayerEndMM, StringFormat=(\{0\}mm)}" />
+            Text="{Binding LayerEndMM, StringFormat=(\{0:F2\}mm)}" />
 
           <TextBlock
             Grid.Row="2" Grid.Column="4"
+            Margin="10,0,0,0"
             HorizontalAlignment="Center"
             Text="{Binding LayerRangeCountStr}" />
 
@@ -180,18 +181,14 @@
 
     <!-- ROI -->
     <Border
+        Grid.Row="2" Classes="GroupBox"
       Background="WhiteSmoke"
       Margin="5"
-      BorderBrush="LightBlue"
-      BorderThickness="4"
-      IsVisible="{Binding IsROIVisible}"
-      >
+      IsVisible="{Binding IsROIVisible}">
 
       <StackPanel Orientation="Vertical">
         <TextBlock
-          Padding="10"
-          Background="LightBlue"
-          FontWeight="Bold"
+          Classes="GroupBoxHeader"
           Text="ROI - Region of interest"/>
 
         <TextBlock Margin="15"
@@ -214,10 +211,9 @@
     
     <!-- Profiles -->
     <Border
+        Grid.Row="3" Classes="GroupBox"
       Background="WhiteSmoke"
       Margin="5"
-      BorderBrush="LightBlue"
-      BorderThickness="4"
       IsVisible="{Binding IsProfilesVisible}"
       >
 
@@ -242,7 +238,6 @@
                 <Image Width="16" Height="16" Source="/Assets/Icons/delete-16x16.png" />
             </Button>
 
-            
           </StackPanel>
 
         </Grid>
@@ -258,13 +253,14 @@
                   IsEnabled="{Binding Profiles.Count}"
                   IsVisible="{Binding Profiles.Count}"
                   SelectedItem="{Binding SelectedProfileItem}"
+                  HorizontalAlignment="Stretch"
                   Items="{Binding Profiles}" />
 
           <Button
               Grid.Row="0"
               Grid.Column="2"
               Margin="0,0,0,10"
-              VerticalAlignment="Center"
+              VerticalAlignment="Stretch"
               ToolTip.Tip="Deselect the current profile"
               IsEnabled="{Binding SelectedProfileItem, Converter={x:Static ObjectConverters.IsNotNull}}"
               IsVisible="{Binding Profiles.Count}"
@@ -276,8 +272,7 @@
               Grid.Row="0"
               Grid.Column="4"
               Margin="0,0,0,10"
-              Width="24"
-              VerticalAlignment="Center"
+              VerticalAlignment="Stretch"
               FontWeight="Bold"
               ToolTip.Tip="Set the selected profile as default to load in with this dialog.
 &#x0a;Shift + click to clear the default profile."
@@ -290,7 +285,7 @@
             Grid.Row="0"
             Grid.Column="6"
             Margin="0,0,0,10"
-              VerticalAlignment="Center"
+              VerticalAlignment="Stretch"
               ToolTip.Tip="Remove the selected profile"
               IsEnabled="{Binding SelectedProfileItem, Converter={x:Static ObjectConverters.IsNotNull}}"
               IsVisible="{Binding Profiles.Count}"
@@ -309,7 +304,7 @@
           <Button
             Grid.Row="1"
             Grid.Column="2"
-              VerticalAlignment="Center"
+              VerticalAlignment="Stretch"
               ToolTip.Tip="Add a new profile with the current set values"
               IsEnabled="{Binding ButtonOkEnabled}"
               Command="{Binding AddProfile}"
@@ -319,50 +314,31 @@
           
         </Grid>
         
-
-        <!--
-        <StackPanel Spacing="20" Margin="15,0,15,15" Orientation="Horizontal">
-          <CheckBox 
-            Content="Clear ROI after perform the operation"
-            IsChecked="{Binding ClearROIAfterOperation}"
-            />
-          <Button 
-            Padding="5" 
-            Content="Clear ROI"
-            Command="{Binding ClearROI}"/>
-        </StackPanel>
-        !-->
-        
       </StackPanel>
 
     </Border>
 
     <!-- Content -->
-    <Border
+    <Border Grid.Row="4"
+      Classes="GroupBox"
       IsVisible="{Binding IsContentVisible}"
       Background="WhiteSmoke"
-      Margin="5"
-      BorderBrush="LightBlue"
-      BorderThickness="4">
+      Margin="5">
 
-      <StackPanel Orientation="Vertical">
-        <TextBlock
-          Padding="10"
-          Background="LightBlue"
-          FontWeight="Bold"
-          Text="{Binding Title}"/>
+        <Grid RowDefinitions="Auto,*">
+            <TextBlock Classes="GroupBoxHeader"
+                       Text="{Binding Title}"/>
 
-        <ScrollViewer 
-                      MaxHeight="{Binding ScrollViewerMaxHeight}"
-                      Content="{Binding ContentControl}"/>
-        <!--<Border Margin="15" Child="{Binding ContentControl}"/>!-->
-      </StackPanel>
-
+            <ScrollViewer Grid.Row="1"
+                          Name="ContentScrollViewer"
+                Content="{Binding ContentControl}"/>
+        </Grid>
     </Border>
 
     <!-- Actions -->
-    <Border Margin="0,10,0,0" Padding="5,20" Background="LightGray">
-      <Grid ColumnDefinitions="*">
+    <Border Grid.Row="5" Classes="FooterActions">
+      <Grid RowDefinitions="Auto"
+          ColumnDefinitions="*">
         <StackPanel Spacing="10" Orientation="Horizontal">
           <Button
               Padding="10"
@@ -418,5 +394,5 @@
       </Grid>
     </Border>
 
-  </StackPanel>
-</Window>
+  </Grid>
+</controls:WindowEx>

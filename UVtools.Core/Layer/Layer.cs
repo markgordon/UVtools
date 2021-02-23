@@ -8,16 +8,14 @@
 using System;
 using System.Collections.Generic;
 using System.Drawing;
-using System.IO.Compression;
 using System.Linq;
+using System.Timers;
 using Emgu.CV;
 using Emgu.CV.CvEnum;
-using Emgu.CV.Structure;
 using Emgu.CV.Util;
 using UVtools.Core.Extensions;
 using UVtools.Core.FileFormats;
 using UVtools.Core.Objects;
-using UVtools.Core.Operations;
 using Stream = System.IO.Stream;
 
 namespace UVtools.Core
@@ -27,9 +25,25 @@ namespace UVtools.Core
     /// </summary>
     public class Layer : BindableBase, IEquatable<Layer>, IEquatable<uint>
     {
+        #region Members
+        private byte[] _compressedBytes;
+        private uint _nonZeroPixelCount;
+        private Rectangle _boundingRectangle = Rectangle.Empty;
+        private bool _isModified;
+        private uint _index;
+        private float _positionZ;
+        private float _exposureTime;
+        private float _lightOffDelay = FileFormat.DefaultLightOffDelay;
+        private float _liftHeight = FileFormat.DefaultLiftHeight;
+        private float _liftSpeed = FileFormat.DefaultLiftSpeed;
+        private float _retractSpeed = FileFormat.DefaultRetractSpeed;
+        private byte _lightPwm = FileFormat.DefaultLightPWM;
+        private float _materialMilliliters;
+        #endregion
+
         #region Properties
 
-        public object Mutex = new object();
+        public object Mutex = new();
 
         /// <summary>
         /// Gets the parent layer manager
@@ -44,7 +58,21 @@ namespace UVtools.Core
         public uint NonZeroPixelCount
         {
             get => _nonZeroPixelCount;
-            internal set => RaiseAndSetIfChanged(ref _nonZeroPixelCount, value);
+            internal set
+            {
+                if(!RaiseAndSetIfChanged(ref _nonZeroPixelCount, value)) return;
+                RaisePropertyChanged(nameof(ExposureMillimeters));
+                MaterialMilliliters = 0; // Recalculate
+            }
+        }
+
+        public float ExposureMillimeters
+        {
+            get
+            {
+                if (SlicerFile is null) return 0;
+                return (float) Math.Round(SlicerFile.PixelSizeMax * _nonZeroPixelCount, 2);
+            }
         }
 
         /// <summary>
@@ -53,7 +81,28 @@ namespace UVtools.Core
         public Rectangle BoundingRectangle
         {
             get => _boundingRectangle;
-            internal set => RaiseAndSetIfChanged(ref _boundingRectangle, value);
+            internal set
+            {
+                RaiseAndSetIfChanged(ref _boundingRectangle, value);
+                RaisePropertyChanged(nameof(BoundingRectangleMillimeters));
+            }
+        }
+
+        /// <summary>
+        /// Gets the bounding rectangle for the image area in millimeters
+        /// </summary>
+        public RectangleF BoundingRectangleMillimeters
+        {
+            get
+            {
+                if (SlicerFile is null) return RectangleF.Empty;
+                var pixelSize = SlicerFile.PixelSize;
+                return new RectangleF(
+                    (float) Math.Round(_boundingRectangle.X * pixelSize.Width, 2),
+                    (float)Math.Round(_boundingRectangle.Y * pixelSize.Height, 2),
+                    (float)Math.Round(_boundingRectangle.Width * pixelSize.Width, 2),
+                    (float)Math.Round(_boundingRectangle.Height * pixelSize.Height, 2));
+            }
         }
 
         public bool IsBottomLayer => Index < ParentLayerManager.SlicerFile.BottomLayerCount;
@@ -84,13 +133,13 @@ namespace UVtools.Core
         /// <summary>
         /// Gets or sets the layer off time in seconds
         /// </summary>
-        public float LayerOffTime
+        public float LightOffDelay
         {
-            get => _layerOffTime;
+            get => _lightOffDelay;
             set
             {
-                if (value <= 0) value = SlicerFile.GetInitialLayerValueOrNormal(Index, SlicerFile.BottomLayerOffTime, SlicerFile.LayerOffTime);
-                RaiseAndSetIfChanged(ref _layerOffTime, value);
+                if (value <= 0) value = SlicerFile.GetInitialLayerValueOrNormal(Index, SlicerFile.BottomLightOffDelay, SlicerFile.LightOffDelay);
+                RaiseAndSetIfChanged(ref _lightOffDelay, value);
             }
         }
 
@@ -152,21 +201,63 @@ namespace UVtools.Core
         public float PositionZ
         {
             get => _positionZ;
-            set => RaiseAndSetIfChanged(ref _positionZ, value);
+            set
+            {
+                if(!RaiseAndSetIfChanged(ref _positionZ, value)) return;
+                RaisePropertyChanged(nameof(LayerHeight));
+            }
         }
 
-        private byte[] _compressedBytes;
-        private uint _nonZeroPixelCount;
-        private Rectangle _boundingRectangle = Rectangle.Empty;
-        private bool _isModified;
-        private uint _index;
-        private float _positionZ;
-        private float _exposureTime;
-        private float _layerOffTime = FileFormat.DefaultLightOffDelay;
-        private float _liftHeight = FileFormat.DefaultLiftHeight;
-        private float _liftSpeed = FileFormat.DefaultLiftSpeed;
-        private float _retractSpeed = FileFormat.DefaultRetractSpeed;
-        private byte _lightPwm = FileFormat.DefaultLightPWM;
+        /// <summary>
+        /// Gets the layer height in millimeters of this layer
+        /// </summary>
+        public float LayerHeight
+        {
+            get
+            {
+                if (_index == 0) return _positionZ;
+                Layer previousLayer = this;
+
+                while ((previousLayer = previousLayer.PreviousLayer()) is not null) // This cycle returns the correct layer height if two or more layers have the same position z
+                {
+                    var layerHeight = (float)Math.Round(_positionZ - previousLayer.PositionZ, 2);
+                    //Debug.WriteLine($"Layer {_index}-{previousLayer.Index}: {_positionZ} - {previousLayer.PositionZ}: {layerHeight}");
+                    if (layerHeight == 0f) continue;
+                    if (layerHeight < 0f) break;
+                    return layerHeight;
+                }
+
+                return ParentLayerManager.SlicerFile.LayerHeight;
+            }
+        }
+
+        /// <summary>
+        /// Gets the computed material milliliters spent on this layer
+        /// </summary>
+        public float MaterialMilliliters
+        {
+            get => _materialMilliliters;
+            private set
+            {
+                if (ParentLayerManager?.SlicerFile is null) return;
+                if (value <= 0)
+                {
+                    value = (float) Math.Round(ParentLayerManager.SlicerFile.PixelArea * ParentLayerManager.SlicerFile.LayerHeight * NonZeroPixelCount / 1000, 4);
+                }
+
+                if(!RaiseAndSetIfChanged(ref _materialMilliliters, value)) return;
+                SlicerFile.MaterialMilliliters = 0; // Recalculate global
+                RaisePropertyChanged(nameof(MaterialMillilitersPercent));
+                //ParentLayerManager.MaterialMillilitersTimer.Stop();
+                //if(!ParentLayerManager.MaterialMillilitersTimer.Enabled)
+                //    ParentLayerManager.MaterialMillilitersTimer.Start();
+            }
+        }
+
+        /// <summary>
+        /// Gets the computed material milliliters percentage compared to the rest of the model
+        /// </summary>
+        public float MaterialMillilitersPercent => _materialMilliliters * 100 / SlicerFile.MaterialMilliliters;
 
         /// <summary>
         /// Gets or sets layer image compressed data
@@ -178,23 +269,10 @@ namespace UVtools.Core
             {
                 _compressedBytes = value;
                 IsModified = true;
-                if (!ReferenceEquals(ParentLayerManager, null))
+                if (ParentLayerManager is not null)
                     ParentLayerManager.BoundingRectangle = Rectangle.Empty;
+                RaisePropertyChanged();
             }
-        }
-
-        /// <summary>
-        /// Gets a computed layer filename, padding zeros are equal to layer count digits
-        /// </summary>
-        public string Filename => FormatFileName("layer");
-
-        /// <summary>
-        /// Gets if layer has been modified
-        /// </summary>
-        public bool IsModified
-        {
-            get => _isModified;
-            set => RaiseAndSetIfChanged(ref _isModified, value);
         }
 
         /// <summary>
@@ -205,7 +283,7 @@ namespace UVtools.Core
             get
             {
                 Mat mat = new();
-                CvInvoke.Imdecode(CompressedBytes, ImreadModes.Grayscale, mat);
+                CvInvoke.Imdecode(_compressedBytes, ImreadModes.Grayscale, mat);
                 return mat;
             }
             set
@@ -225,26 +303,67 @@ namespace UVtools.Core
         {
             get
             {
-                Mat mat = LayerMat;
+                var mat = LayerMat;
                 CvInvoke.CvtColor(mat, mat, ColorConversion.Gray2Bgr);
                 return mat;
+            }
+        }
+
+        /// <summary>
+        /// Gets a computed layer filename, padding zeros are equal to layer count digits
+        /// </summary>
+        public string Filename => FormatFileName("layer");
+
+        /// <summary>
+        /// Gets if layer image has been modified
+        /// </summary>
+        public bool IsModified
+        {
+            get => _isModified;
+            set => RaiseAndSetIfChanged(ref _isModified, value);
+        }
+
+        /// <summary>
+        /// Gets if this layer have same value parameters as global settings
+        /// </summary>
+        public bool HaveGlobalParameters
+        {
+            get
+            {
+                if (SlicerFile is null) return false; // Cant verify
+                if (IsBottomLayer)
+                {
+                    if (ExposureTime != SlicerFile.BottomExposureTime ||
+                        LiftHeight != SlicerFile.BottomLiftHeight ||
+                        LiftSpeed != SlicerFile.BottomLiftSpeed ||
+                        LightOffDelay != SlicerFile.BottomLightOffDelay ||
+                        LightPWM != SlicerFile.BottomLightPWM 
+                        ) return false;
+                }
+                else
+                {
+                    if (ExposureTime != SlicerFile.ExposureTime ||
+                        LiftHeight != SlicerFile.LiftHeight ||
+                        LiftSpeed != SlicerFile.LiftSpeed ||
+                        LightOffDelay != SlicerFile.LightOffDelay ||
+                        LightPWM != SlicerFile.LightPWM
+                    ) return false;
+                }
+
+                if (RetractSpeed != SlicerFile.RetractSpeed) return false;
+
+                return true;
             }
         }
 
         #endregion
 
         #region Constructor
-        public Layer(uint index, byte[] compressedBytes, LayerManager parentLayerManager)
+
+        public Layer(uint index, LayerManager parentLayerManager)
         {
             ParentLayerManager = parentLayerManager;
-            Index = index;
-            //Filename = filename ?? $"Layer{index}.png";
-            CompressedBytes = compressedBytes;
-            IsModified = false;
-            /*if (compressedBytes.Length > 0)
-            {
-                GetBoundingRectangle();
-            }*/
+            _index = index;
 
             if (parentLayerManager is null) return;
             _positionZ = SlicerFile.GetHeightFromLayer(index);
@@ -255,13 +374,23 @@ namespace UVtools.Core
             _lightPwm = SlicerFile.GetInitialLayerValueOrNormal(index, SlicerFile.BottomLightPWM, SlicerFile.LightPWM);
         }
 
+        public Layer(uint index, byte[] compressedBytes, LayerManager parentLayerManager) : this(index, parentLayerManager)
+        {
+            CompressedBytes = compressedBytes;
+            _isModified = false;
+            /*if (compressedBytes.Length > 0)
+            {
+                GetBoundingRectangle();
+            }*/
+        }
+
         public Layer(uint index, byte[] compressedBytes, FileFormat slicerFile) : this(index, compressedBytes, slicerFile.LayerManager)
         {}
 
-        public Layer(uint index, Mat layerMat, LayerManager parentLayerManager) : this(index, new byte[0], parentLayerManager)
+        public Layer(uint index, Mat layerMat, LayerManager parentLayerManager) : this(index, parentLayerManager)
         {
             LayerMat = layerMat;
-            IsModified = false;
+            _isModified = false;
         }
 
         public Layer(uint index, Mat layerMat, FileFormat slicerFile) : this(index, layerMat, slicerFile.LayerManager) { }
@@ -348,7 +477,7 @@ namespace UVtools.Core
 
         public override string ToString()
         {
-            return $"{nameof(Index)}: {Index}, {nameof(Filename)}: {Filename}, {nameof(NonZeroPixelCount)}: {NonZeroPixelCount}, {nameof(BoundingRectangle)}: {BoundingRectangle}, {nameof(IsBottomLayer)}: {IsBottomLayer}, {nameof(IsNormalLayer)}: {IsNormalLayer}, {nameof(PositionZ)}: {PositionZ}, {nameof(ExposureTime)}: {ExposureTime}, {nameof(LayerOffTime)}: {LayerOffTime}, {nameof(LiftHeight)}: {LiftHeight}, {nameof(LiftSpeed)}: {LiftSpeed}, {nameof(RetractSpeed)}: {RetractSpeed}, {nameof(LightPWM)}: {LightPWM}, {nameof(IsModified)}: {IsModified}";
+            return $"{nameof(Index)}: {Index}, {nameof(Filename)}: {Filename}, {nameof(NonZeroPixelCount)}: {NonZeroPixelCount}, {nameof(BoundingRectangle)}: {BoundingRectangle}, {nameof(IsBottomLayer)}: {IsBottomLayer}, {nameof(IsNormalLayer)}: {IsNormalLayer}, {nameof(LayerHeight)}: {LayerHeight}, {nameof(PositionZ)}: {PositionZ}, {nameof(ExposureTime)}: {ExposureTime}, {nameof(LightOffDelay)}: {LightOffDelay}, {nameof(LiftHeight)}: {LiftHeight}, {nameof(LiftSpeed)}: {LiftSpeed}, {nameof(RetractSpeed)}: {RetractSpeed}, {nameof(LightPWM)}: {LightPWM}, {nameof(IsModified)}: {IsModified}, {nameof(HaveGlobalParameters)}: {HaveGlobalParameters}";
         }
         #endregion
 
@@ -361,7 +490,7 @@ namespace UVtools.Core
 
         public Rectangle GetBoundingRectangle(Mat mat = null, bool reCalculate = false)
         {
-            if (NonZeroPixelCount > 0 && !reCalculate)
+            if (_nonZeroPixelCount > 0 && !reCalculate)
             {
                 return BoundingRectangle;
             }
@@ -388,18 +517,18 @@ namespace UVtools.Core
 
         public Layer PreviousLayer()
         {
-            if (ReferenceEquals(ParentLayerManager, null) || Index == 0)
+            if (ParentLayerManager is null || _index == 0)
                 return null;
 
-            return ParentLayerManager[Index - 1];
+            return ParentLayerManager[_index - 1];
         }
 
         public Layer NextLayer()
         {
-            if (ReferenceEquals(ParentLayerManager, null) || Index >= ParentLayerManager.Count - 1)
+            if (ParentLayerManager is null || _index >= ParentLayerManager.Count - 1)
                 return null;
 
-            return ParentLayerManager[Index + 1];
+            return ParentLayerManager[_index + 1];
         }
 
         public bool SetValueFromPrintParameterModifier(FileFormat.PrintParameterModifier modifier, decimal value)
@@ -410,9 +539,9 @@ namespace UVtools.Core
                 return true;
             }
 
-            if (ReferenceEquals(modifier, FileFormat.PrintParameterModifier.LayerOffTime))
+            if (ReferenceEquals(modifier, FileFormat.PrintParameterModifier.LightOffDelay))
             {
-                LayerOffTime = (float)value;
+                LightOffDelay = (float)value;
                 return true;
             }
 
@@ -641,13 +770,15 @@ namespace UVtools.Core
                 LiftHeight = _liftHeight,
                 LiftSpeed = _liftSpeed,
                 RetractSpeed = _retractSpeed,
-                LayerOffTime = _layerOffTime,
+                LightOffDelay = _lightOffDelay,
                 LightPWM = _lightPwm,
                 BoundingRectangle = _boundingRectangle,
                 NonZeroPixelCount = _nonZeroPixelCount,
                 IsModified = _isModified,
+                MaterialMilliliters = _materialMilliliters
             };
         }
+
 
         #endregion
     }

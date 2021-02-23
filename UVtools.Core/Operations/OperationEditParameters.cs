@@ -9,6 +9,7 @@
 using System;
 using System.Linq;
 using System.Text;
+using System.Xml.Serialization;
 using UVtools.Core.FileFormats;
 using UVtools.Core.Objects;
 
@@ -19,6 +20,9 @@ namespace UVtools.Core.Operations
     {
         #region Members
         private bool _perLayerOverride;
+        private uint _setNumberOfLayer = 1;
+        private uint _skipNumberOfLayer = 0;
+
         #endregion
 
         #region Overrides
@@ -82,6 +86,7 @@ namespace UVtools.Core.Operations
 
         #region Propertiers
 
+        [XmlIgnore]
         public FileFormat.PrintParameterModifier[] Modifiers { get; set; }
 
         /// <summary>
@@ -92,23 +97,75 @@ namespace UVtools.Core.Operations
             get => _perLayerOverride;
             set => RaiseAndSetIfChanged(ref _perLayerOverride, value);
         }
+
+        /// <summary>
+        /// Gets or sets the number of sequential layers to set the parameters
+        /// </summary>
+        public uint SetNumberOfLayer
+        {
+            get => _setNumberOfLayer;
+            set => RaiseAndSetIfChanged(ref _setNumberOfLayer, value);
+        }
+
+        /// <summary>
+        /// Gets or sets the number of sequential layers to skip after set a layer
+        /// </summary>
+        public uint SkipNumberOfLayer
+        {
+            get => _skipNumberOfLayer;
+            set => RaiseAndSetIfChanged(ref _skipNumberOfLayer, value);
+        }
+
         #endregion
 
-        public OperationEditParameters()
+        #region Constructor
+
+        public OperationEditParameters() { }
+
+        public OperationEditParameters(FileFormat slicerFile) : base(slicerFile) { }
+
+        public override void InitWithSlicerFile()
         {
+            base.InitWithSlicerFile();
+            SlicerFile.RefreshPrintParametersModifiersValues();
+            Modifiers = SlicerFile.PrintParameterModifiers;
         }
 
-        public OperationEditParameters(FileFormat.PrintParameterModifier[] modifiers)
-        {
-            Modifiers = modifiers;
-        }
+        #endregion
 
         #region Methods
 
-        public override bool Execute(FileFormat slicerFile, OperationProgress progress = null)
+        protected override bool ExecuteInternally(OperationProgress progress)
         {
-            slicerFile.EditPrintParameters(this);
-            return true;
+            if (PerLayerOverride)
+            {
+                uint setLayers = 0;
+                for (uint layerIndex = LayerIndexStart; layerIndex <= LayerIndexEnd; layerIndex++)
+                {
+                    SlicerFile[layerIndex].SetValuesFromPrintParametersModifiers(Modifiers);
+                    if (SkipNumberOfLayer <= 0) continue;
+                    setLayers++;
+                    if (setLayers >= SetNumberOfLayer)
+                    {
+                        setLayers = 0;
+                        layerIndex += SkipNumberOfLayer;
+                    }
+                }
+
+                foreach (var modifier in Modifiers)
+                {
+                    modifier.OldValue = modifier.NewValue;
+                }
+                SlicerFile.RebuildGCode();
+            }
+            else
+            {
+                SlicerFile.SetValuesFromPrintParametersModifiers();
+            }
+
+            SlicerFile.RefreshPrintParametersModifiersValues();
+
+            return !progress.Token.IsCancellationRequested;
         }
 
         #endregion

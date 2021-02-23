@@ -335,28 +335,34 @@ namespace UVtools.WPF
             var layer = LayerCache.Layer;
             CurrentLayerProperties.Clear();
             CurrentLayerProperties.Add(new StringTag(nameof(layer.Index), $"{layer.Index}"));
+            CurrentLayerProperties.Add(new StringTag(nameof(layer.LayerHeight), $"{layer.LayerHeight:F2}mm"));
             //CurrentLayerProperties.Add(new KeyValuePair<string, string>(nameof(layer.Filename), layer.Filename));
-            CurrentLayerProperties.Add(new StringTag(nameof(layer.PositionZ), $"{layer.PositionZ.ToString(CultureInfo.InvariantCulture)}mm"));
+            CurrentLayerProperties.Add(new StringTag(nameof(layer.PositionZ), $"{layer.PositionZ:F2}mm"));
             CurrentLayerProperties.Add(new StringTag(nameof(layer.IsBottomLayer), layer.IsBottomLayer.ToString()));
             CurrentLayerProperties.Add(new StringTag(nameof(layer.IsModified), layer.IsModified.ToString()));
             //CurrentLayerProperties.Add(new StringTag(nameof(layer.BoundingRectangle), layer.BoundingRectangle.ToString()));
             //CurrentLayerProperties.Add(new StringTag(nameof(layer.NonZeroPixelCount), layer.NonZeroPixelCount.ToString()));
-            CurrentLayerProperties.Add(new StringTag(nameof(layer.ExposureTime), $"{layer.ExposureTime.ToString(CultureInfo.InvariantCulture)}s"));
+            CurrentLayerProperties.Add(new StringTag(nameof(layer.ExposureTime), $"{layer.ExposureTime:F2}s"));
 
-            if (ReferenceEquals(SlicerFile.PrintParameterPerLayerModifiers, null)) return;
+            if (SlicerFile.PrintParameterPerLayerModifiers is not null)
+            {
 
-            if (SlicerFile.PrintParameterPerLayerModifiers.Contains(FileFormat.PrintParameterModifier.LiftHeight))
-                CurrentLayerProperties.Add(new StringTag(nameof(layer.LiftHeight),
-                    $"{layer.LiftHeight.ToString(CultureInfo.InvariantCulture)}mm @ {layer.LiftSpeed.ToString(CultureInfo.InvariantCulture)}mm/min"));
-            //CurrentLayerProperties.Adnew StringTagg>(nameof(layer.LiftSpeed), $"{layer.LiftSpeed.ToString(CultureInfo.InvariantCulture)}mm/min"));
-            if (SlicerFile.PrintParameterPerLayerModifiers.Contains(FileFormat.PrintParameterModifier.RetractSpeed))
-                CurrentLayerProperties.Add(new StringTag(nameof(layer.RetractSpeed),
-                    $"{layer.RetractSpeed.ToString(CultureInfo.InvariantCulture)}mm/min"));
-            if (SlicerFile.PrintParameterPerLayerModifiers.Contains(FileFormat.PrintParameterModifier.LayerOffTime))
-                CurrentLayerProperties.Add(new StringTag(nameof(layer.LayerOffTime),
-                    $"{layer.LayerOffTime.ToString(CultureInfo.InvariantCulture)}s"));
-            if (SlicerFile.PrintParameterPerLayerModifiers.Contains(FileFormat.PrintParameterModifier.LightPWM))
-                CurrentLayerProperties.Add(new StringTag(nameof(layer.LightPWM), layer.LightPWM.ToString()));
+                if (SlicerFile.PrintParameterPerLayerModifiers.Contains(FileFormat.PrintParameterModifier.LiftHeight))
+                    CurrentLayerProperties.Add(new StringTag(nameof(layer.LiftHeight),
+                        $"{layer.LiftHeight.ToString(CultureInfo.InvariantCulture)}mm @ {layer.LiftSpeed.ToString(CultureInfo.InvariantCulture)}mm/min"));
+                //CurrentLayerProperties.Adnew StringTagg>(nameof(layer.LiftSpeed), $"{layer.LiftSpeed.ToString(CultureInfo.InvariantCulture)}mm/min"));
+                if (SlicerFile.PrintParameterPerLayerModifiers.Contains(FileFormat.PrintParameterModifier.RetractSpeed))
+                    CurrentLayerProperties.Add(new StringTag(nameof(layer.RetractSpeed),
+                        $"{layer.RetractSpeed}mm/min"));
+                if (SlicerFile.PrintParameterPerLayerModifiers.Contains(FileFormat.PrintParameterModifier.LightOffDelay)
+                )
+                    CurrentLayerProperties.Add(new StringTag(nameof(layer.LightOffDelay),
+                        $"{layer.LightOffDelay}s"));
+                if (SlicerFile.PrintParameterPerLayerModifiers.Contains(FileFormat.PrintParameterModifier.LightPWM))
+                    CurrentLayerProperties.Add(new StringTag(nameof(layer.LightPWM), layer.LightPWM.ToString()));
+            }
+
+            CurrentLayerProperties.Add(new StringTag(nameof(layer.MaterialMilliliters), $"{layer.MaterialMilliliters}ml ({layer.MaterialMillilitersPercent:F2}%)"));
         }
         #endregion
     }

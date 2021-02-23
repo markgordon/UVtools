@@ -22,15 +22,15 @@ using Avalonia.ThemeManager;
 using Emgu.CV;
 using UVtools.Core;
 using UVtools.Core.FileFormats;
+using UVtools.Core.Managers;
 using UVtools.WPF.Extensions;
 using UVtools.WPF.Structures;
-using Size = System.Drawing.Size;
 
 namespace UVtools.WPF
 {
     public class App : Application
     {
-        public static IThemeSelector? ThemeSelector { get; set; }
+        public static ThemeSelector ThemeSelector { get; set; }
         public static MainWindow MainWindow;
         public static FileFormat SlicerFile = null;
 
@@ -53,7 +53,10 @@ namespace UVtools.WPF
 
                 OperationProfiles.Load();
 
-                ThemeSelector = Avalonia.ThemeManager.ThemeSelector.Create(Path.Combine(ApplicationPath, "Assets", "Themes"));
+                MaterialManager.FilePath = Path.Combine(UserSettings.SettingsFolder, "materials.xml");
+                MaterialManager.Load();
+
+                /*ThemeSelector = ThemeSelector.Create(Path.Combine(ApplicationPath, "Assets", "Themes"));
                 ThemeSelector.LoadSelectedTheme(Path.Combine(UserSettings.SettingsFolder, "selected.theme"));
                 if (ThemeSelector.SelectedTheme.Name == "UVtoolsDark" || ThemeSelector.SelectedTheme.Name == "Light")
                 {
@@ -63,13 +66,16 @@ namespace UVtools.WPF
                         theme.ApplyTheme();
                         break;
                     }
-                }
-                
-                MainWindow = new MainWindow();
+                }*/
 
+                MainWindow = new MainWindow();
                 try
                 {
-                    CvInvoke.CheckLibraryLoaded();
+                    if(!CvInvoke.Init())
+                        await MainWindow.MessageBoxError("UVtools can not init OpenCV library\n" +
+                                                     "Please build or install this dependencies in order to run UVtools\n" +
+                                                     "Check manual or page at 'Requirements' section for help", 
+                        "UVtools can not run");
                 }
                 catch (Exception e)
                 {
@@ -82,8 +88,7 @@ namespace UVtools.WPF
                 }
 
                 desktop.MainWindow = MainWindow;
-                desktop.Exit += (sender, e) 
-                    => ThemeSelector.SaveSelectedTheme(Path.Combine(UserSettings.SettingsFolder, "selected.theme"));
+                //desktop.Exit += (sender, e) => ThemeSelector.SaveSelectedTheme(Path.Combine(UserSettings.SettingsFolder, "selected.theme"));
             }
 
             base.OnFrameworkInitializationCompleted();
@@ -191,6 +196,8 @@ namespace UVtools.WPF
 
             if (OperatingSystem.IsLinux())
             {
+                var folder1 = $"{Environment.GetFolderPath(Environment.SpecialFolder.UserProfile)}{Path.DirectorySeparatorChar}.config{Path.DirectorySeparatorChar}PrusaSlicer";
+                if (Directory.Exists(folder1)) return folder1;
                 return $"{Environment.GetFolderPath(Environment.SpecialFolder.UserProfile)}{Path.DirectorySeparatorChar}.PrusaSlicer";
             }
 
@@ -223,7 +230,7 @@ namespace UVtools.WPF
                         return titleAttribute.Title;
                     }
                 }
-                return System.IO.Path.GetFileNameWithoutExtension(Assembly.GetExecutingAssembly().CodeBase);
+                return Path.GetFileNameWithoutExtension(Assembly.GetExecutingAssembly().Location);
             }
         }
 
@@ -241,7 +248,7 @@ namespace UVtools.WPF
 
                 string description = ((AssemblyDescriptionAttribute)attributes[0]).Description + $"{Environment.NewLine}{Environment.NewLine}Available File Formats:";
 
-                return FileFormat.AvaliableFormats.SelectMany(fileFormat => fileFormat.FileExtensions).Aggregate(description, (current, fileExtension) => current + $"{Environment.NewLine}- {fileExtension.Description} (.{fileExtension.Extension})");
+                return FileFormat.AvailableFormats.SelectMany(fileFormat => fileFormat.FileExtensions).Aggregate(description, (current, fileExtension) => current + $"{Environment.NewLine}- {fileExtension.Description} (.{fileExtension.Extension})");
             }
         }
 

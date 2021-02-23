@@ -15,7 +15,7 @@ This simple tool can give you insight of supports and find some failures. Did yo
 ![GUI Screenshot Islands](https://raw.githubusercontent.com/sn4k3/UVtools/master/UVtools.GUI/Images/Screenshots/UVtools_GUI_Islands.png)
 ![Convertion Screenshot](https://raw.githubusercontent.com/sn4k3/UVtools/master/UVtools.GUI/Images/Screenshots/SL1ToCbddlp.png)
 
-## Why this project?
+# Why this project?
 I don't own a Prusa SL1 or any other resin printer, for now I’m only a FDM user with 
 Prusa MK3 and a Ender3.
 PrusaSlicer is my only choose, why? Because I think it's the best and feature more, 
@@ -37,20 +37,20 @@ Please note i don't have any resin printer! All my work is virtual and calculate
 so, use experimental functions with care! Once things got confirmed a list will show. 
 But also, i need victims for test subject. Proceed at your own risk!
 
-## Features
+# Features
 
 * View image layer by layer
 * View and extract thumbnails
 * View all used settings
 * Edit print properties and save file
 * Mutate and filter layers
-* Check islands and repair/remove them as other issues
+* Check islands, overhangs, resin traps and repair/remove them as other issues
 * Export file to a folder
 * Convert format to another format
 * Calibration tests
 * Portable (No installation needed)
 
-## Known File Formats
+# Known File Formats
 
 * SL1 (PrusaSlicer)
 * Zip (Chitubox)
@@ -59,79 +59,96 @@ But also, i need victims for test subject. Proceed at your own risk!
 * CBDDLP (Chitubox)
 * CBT (Chitubox)
 * PHZ (Chitubox)
+* FDG (Voxelab)
 * PWS (Photon Workshop)
 * PW0 (Photon Workshop)
-* PWX (Photon Workshop) [Not confirmed]
-* PWMO (Photon Workshop) [Not confirmed]
-* PWMS (Photon Workshop) [Not confirmed]
-* PWMX (Photon Workshop) [Not confirmed]
+* PWX (Photon Workshop)
+* PWMO (Photon Workshop)
+* PWMS (Photon Workshop)
+* PWMX (Photon Workshop)
 * ZCodex (Z-Suite)
 * CWS (NovaMaker)
+* RGB.CWS (Nova Bene4 Mono / Elfin2 Mono SE)
+* XML.CWS (Wanhao Workshop)
 * LGS (Longer Orange 10)
 * LGS30 (Longer Orange 30)
 * UVJ (Zip file for manual manipulation format)
 * Image files (png, jpg, jpeg, gif, bmp)
 
-## Available printers for PrusaSlicer
+# Available printers for PrusaSlicer
 
-* EPAX E6 Mono
-* EPAX E10 Mono
-* EPAX X1
-* EPAX X10
-* EPAX X10 4K Mono
-* EPAX X133 4K Mono
-* EPAX X156 4K Color
-* EPAX X1K 2K Mono
-* Zortrax Inkspire
-* Nova3D Elfin
-* Nova3D Bene4 Mono
-* AnyCubic Photon
-* AnyCubic Photon S
-* AnyCubic Photon Zero
-* Elegoo Mars
-* Elegoo Mars 2 Pro
-* Elegoo Mars C
-* Elegoo Saturn
-* Peopoly Phenom
-* Peopoly Phenom L
-* Peopoly Phenom XXL
-* Peopoly Phenom Noir
-* QIDI Shadow5.5
-* QIDI Shadow6.0 Pro
-* QIDI S-Box
-* QIDI 3D ibox mono
-* Phrozen Shuffle
-* Phrozen Shuffle Lite
-* Phrozen Shuffle XL
-* Phrozen Shuffle XL Lite
-* Phrozen Shuffle 16
-* Phrozen Shuffle 4K
-* Phrozen Sonic
-* Phrozen Sonic 4K
-* Phrozen Sonic Mighty 4K
-* Phrozen Sonic Mini
-* Phrozen Sonic Mini 4K
-* Phrozen Transform
-* Kelant S400
-* Wanhao D7
-* Wanhao D8
-* Wanhao CGR Mini Mono
-* Wanhao CGR Mono
-* Creality LD-002R
-* Creality LD-002H
-* Creality LD-006
-* Voxelab Polaris
-* Voxelab Proxima
-* Longer Orange 10
-* Longer Orange 30
-* Longer Orange4K
+* **EPAX**
+  * E6 Mono
+  * E10 Mono
+  * X1
+  * X10
+  * X10 4K Mono
+  * X133 4K Mono
+  * X156 4K Color
+  * X1K 2K Mono
+* **Zortrax Inkspire**
+* **Nova3D**
+  * Elfin
+  * Bene4 Mono
+* **AnyCubic**
+  * Photon
+  * Photon S
+  * Photon Zero
+* **Elegoo**
+  * Mars
+  * Mars 2 Pro
+  * Mars C
+  * Saturn
+* **Peopoly**
+  * Phenom
+  * Phenom L
+  * Phenom XXL
+  * Phenom Noir
+* **QIDI**
+  * Shadow5.5
+  * Shadow6.0 Pro
+  * S-Box
+  * 3D ibox mono
+* **Phrozen**
+  * Shuffle
+  * Shuffle Lite
+  * Shuffle XL
+  * Shuffle XL Lite
+  * Shuffle 16
+  * Shuffle 4K
+  * Sonic
+  * Sonic 4K
+  * Sonic Mighty 4K
+  * Sonic Mini
+  * Sonic Mini 4K
+  * Transform
+* **Kelant S400**
+* **Wanhao**
+  * D7
+  * D8
+  * CGR Mini Mono
+  * CGR Mono
+* **Creality**
+  * LD-002R
+  * LD-002H
+  * LD-006
+* **Voxelab**
+  * Polaris 5.5
+  * Proxima 6
+  * Ceres 8.9
+* **Longer**
+  * Orange 10
+  * Orange 30
+  * Orange4K
 
-## Available profiles for PrusaSlicer
+# Available profiles for PrusaSlicer
 
 * From 0.01mm to 0.20mm
 * Light, Medium and Heavy Supports
 
-## Install and configure profiles under PrusaSlicer
+# Install and configure profiles under PrusaSlicer
+
+Complete guide: https://github.com/sn4k3/UVtools/wiki/Setup-PrusaSlicer
 
 1. Download and install PrusaSlicer from: https://www.prusa3d.com/prusaslicer/
 1. Start and configure PrusaSlicer (Wizard)
@@ -145,18 +162,29 @@ But also, i need victims for test subject. Proceed at your own risk!
 1. Look up under "Printer -> Notes" and configure parameters to the target slicer
 1. Change only the value after the "_" (underscore)
 
-## Custom "Printer Notes" keywords
+## Custom "Material Notes" and "Printer Notes" keywords for PrusaSlicer
 
-* **FLIP_XY** Flip X with Y resolution, this is required in some cases, it will not affect Prusa output, only used for convertions to another format, use this if you have to use inverted XY under printer settings (Epax for example).
+Note that some variables will only work if the target format supports them, otherwise they will be ignored.
+Replace the "xxx" by your desired value in the correct units
 
-## File Convertion
+* **BottomLightOffDelay_xxx:** Sets the bottom light off delay time in seconds
+* **LightOffDelay_xxx:** Sets the light off delay time in seconds
+* **BottomLiftHeight_xxx:** Sets the bottom lift height in millimeters
+* **BottomLiftSpeed_xxx:** Sets the bottom lift speed in millimeters/second
+* **LiftHeight_xxx:** Sets the lift height in millimeters
+* **LiftSpeed_xxx:** Sets the lift speed in millimeters/second
+* **RetractSpeed_xxx:** Sets the retract speed in millimeters/second
+* **BottomLightPWM_xxx:** Sets the bottom LED light power (0-255)
+* **LightPWM_xxx:** Sets the LED light power (0-255)
+* **FILEFORMAT_xxx:** Sets the output file format extension to be auto converted once open on UVtools
 
-I highly recommend open the converted file into original slicer and check if it's okay to print, on this beta stage never blind trust the program.
-After some tests without failure you can increase your confidence and ignore this stage, or maybe not ;) 
+# File Convertion
 
-## Requirements
+https://github.com/sn4k3/UVtools/wiki/Sliced-File-Conversion
 
-### Windows
+# Requirements
+
+## Windows
 
 1. Windows 7 or greater
    1. If on Windows 10 N or NK: [Media Feature Pack](https://www.microsoft.com/download/details.aspx?id=48231) must be installed
@@ -165,13 +193,13 @@ After some tests without failure you can increase your confidence and ignore thi
 1. 1980 x 1080 @ 100% scale as minimum resolution
 
 
-### Linux
+## Linux
 
 1. 4GB RAM or higher
 2. 64 bit System
 1. 1980 x 1080 @ 100% scale as minimum resolution
 
-**Ubuntu/Mint/Debian/Similars**
+### Ubuntu/Mint/Debian/Similars
 
 <!--- 
 wget https://packages.microsoft.com/config/ubuntu/20.04/packages-microsoft-prod.deb -O packages-microsoft-prod.deb
@@ -188,7 +216,44 @@ sudo apt-get install -y libjpeg-dev libpng-dev libgeotiff-dev libdc1394-22 libav
 ```
 
 
-**Arch/Manjaro/Similars**
+### Compile libcvextern.so:
+
+**After this if you run UVtools and got a error like:**
+> System.DllNotFoundException: unable to load shared library 'cvextern' or one of its dependencies
+
+This means you haven't the required dependencies to run the cvextern library, 
+that may due system version and included libraries version, they must match the compiled version of libcvextern.
+
+To know what is missing you can open a terminal on UVtools folder and run the following command: `ldd libcvextern.so |grep not` 
+That will return the missing dependencies from libcvextern, you can try install them by other means if you can, 
+but most of the time you will need compile the EmguCV to compile the dependencies and correct link them, 
+this process is very slow but only need to run once. Open a terminal on any folder of your preference and run the following commands:
+
+```bash
+sudo apt-get install -y git build-essential cmake
+git clone https://github.com/emgucv/emgucv emgucv 
+cd emgucv
+git submodule update --init --recursive
+cd platforms/ubuntu/20.04
+./apt_install_dependency.sh
+./cmake_configure.sh
+cmake build
+```
+
+Make sure all commands run with success.
+After run these commands you can try run UVtools again,
+if it runs then nothing more is needed and you can remove the emgucv folder, 
+this means you only need the dependencies on your system.
+ 
+Otherwise you need to copy the output 'emgucv/libs/x64/libcvextern.so' file created by this compilation to the UVtools folder and replace the original. 
+Keep a copy of file somewhere safe, you will need to replace it everytime you update UVtools.
+Additionally you can share your libcvextern.so on UVtools GitHub with your system information (Name Version) to help others with same problem, 
+anyone with same system version can make use of it without the need of the compilation process.
+
+**Note:** You need to repeat this process everytime UVtools upgrades OpenCV version, keep a eye on changelog.
+
+
+### Arch/Manjaro/Similars
 
 ```bash
 sudo pacman -S openjpeg2 libjpeg-turbo libpng libgeotiff libdc1394 libdc1394 ffmpeg openexr tbb
@@ -202,7 +267,43 @@ To run UVtools open it folder on a terminal and call one of:
 * `dotnet UVtools.dll` [For universal package only, requires dotnet-runtime]
 * As a pratical alternative you can create a shortcut on Desktop
 
-### Mac
+### Compile libcvextern.so:
+
+**After this if you run UVtools and got a error like:**
+> System.DllNotFoundException: unable to load shared library 'cvextern' or one of its dependencies
+
+This means you haven't the required dependencies to run the cvextern library, 
+that may due system version and included libraries version, they must match the compiled version of libcvextern.
+
+To know what is missing you can open a terminal on UVtools folder and run the following command: `ldd libcvextern.so |grep not` 
+That will return the missing dependencies from libcvextern, you can try install them by other means if you can, 
+but most of the time you will need compile the EmguCV to compile the dependencies and correct link them, 
+this process is very slow but only need to run once. Open a terminal on any folder of your preference and run the following commands:
+
+```bash
+sudo pacman -Syu
+sudo pacman -S base-devel git cmake msbuild
+git clone https://github.com/emgucv/emgucv emgucv 
+cd emgucv
+git submodule update --init --recursive
+cd platforms/ubuntu/20.04
+./cmake_configure.sh
+cmake build
+```
+
+Make sure all commands run with success.
+After run these commands you can try run UVtools again,
+if it runs then nothing more is needed and you can remove the emgucv folder, 
+this means you only need the dependencies on your system.
+ 
+Otherwise you need to copy the output 'emgucv/libs/x64/libcvextern.so' file created by this compilation to the UVtools folder and replace the original. 
+Keep a copy of file somewhere safe, you will need to replace it everytime you update UVtools.
+Additionally you can share your libcvextern.so on UVtools GitHub with your system information (Name Version) to help others with same problem, 
+anyone with same system version can make use of it without the need of the compilation process.
+
+**Note:** You need to repeat this process everytime UVtools upgrades OpenCV version, keep a eye on changelog.
+
+## Mac
 
 1. macOS 10.12 Sierra
    1. If on a previous macOS version, use the universal UVtools package 
@@ -226,7 +327,22 @@ To run UVtools open it folder on a terminal and call one of:
 * `dotnet UVtools.dll` [For universal package only, requires dotnet-runtime]
 * As a pratical alternative you can create a shortcut on Desktop
 
-## How to use
+
+### Compile libcvextern.dylib: 
+
+```bash
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install.sh)"
+brew analytics off
+brew install git cmake libjpeg libpng libgeotiff libdc1394 ffmpeg openexr tbb
+brew install --cask dotnet-sdk
+git clone https://github.com/emgucv/emgucv emgucv 
+cd emgucv
+git submodule update --init --recursive
+cd platforms/macos
+./configure
+```
+
+# How to use
 
 There are multiple ways to open your file:
 
@@ -235,17 +351,17 @@ There are multiple ways to open your file:
 3. Drag and drop file into UVtools.exe
 4. Set UVtools the default program to open your files
 
-## Library -> Developers
+# Library -> Developers
 
 Are you a developer? This project include a .NET 5.0 library (UVtools.Core) that can be referenced in your application to make use of my work. Easy to use calls that allow you work with the formats. For more information navigate main code.
 
 
-## TODO
+# TODO
 * More file formats
 * Clean up (always)
 * See features request under Github
 
-## Support my work / Donate
+# Support my work / Donate
 
 All my work here is given for free (OpenSource), it took some hours to build, test and polish the program.
 If you're happy to contribute for a better program and for my work i will appreciate the tip.

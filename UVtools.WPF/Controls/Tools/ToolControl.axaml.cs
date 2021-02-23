@@ -16,7 +16,8 @@ namespace UVtools.WPF.Controls.Tools
             get => _baseOperation;
             set
             {
-                if(!RaiseAndSetIfChanged(ref _baseOperation, value)) return;
+                _baseOperation = value;
+                RaisePropertyChanged();
                 if (DataContext is null) return;
                 ResetDataContext();
             }

@@ -15,7 +15,7 @@ namespace UVtools.WPF.Controls.Calibrators
     {
         public OperationCalibrateXYZAccuracy Operation => BaseOperation as OperationCalibrateXYZAccuracy;
 
-        private Timer _timer;
+        private readonly Timer _timer;
 
         public string ProfileName
         {
@@ -27,7 +27,6 @@ namespace UVtools.WPF.Controls.Calibrators
 
         private Bitmap _previewImage;
         private string _profileName;
-        private bool _isProfileNameEnabled;
 
         public Bitmap PreviewImage
         {
@@ -35,20 +34,10 @@ namespace UVtools.WPF.Controls.Calibrators
             set => RaiseAndSetIfChanged(ref _previewImage, value);
         }
 
-        public bool IsDisplaySizeVisible => App.SlicerFile.DisplayWidth <= 0 && App.SlicerFile.DisplayHeight <= 0;
-
         public CalibrateXYZAccuracyControl()
         {
             InitializeComponent();
-            BaseOperation = new OperationCalibrateXYZAccuracy();
-
-            if (App.SlicerFile is not null)
-            {
-                Operation.LayerHeight = (decimal)App.SlicerFile.LayerHeight;
-                Operation.BottomLayers = App.SlicerFile.BottomLayerCount;
-                Operation.BottomExposure = (decimal)App.SlicerFile.BottomExposureTime;
-                Operation.NormalExposure = (decimal)App.SlicerFile.ExposureTime;
-            }
+            BaseOperation = new OperationCalibrateXYZAccuracy(SlicerFile);
 
             _timer = new Timer(20)
             {
@@ -69,11 +58,6 @@ namespace UVtools.WPF.Controls.Calibrators
             {
                 case ToolWindow.Callbacks.Init:
                 case ToolWindow.Callbacks.ProfileLoaded:
-                    Operation.Resolution = App.SlicerFile.Resolution;
-                    if(App.SlicerFile.DisplayWidth > 0)
-                        Operation.DisplayWidth = (decimal)App.SlicerFile.DisplayWidth;
-                    if (App.SlicerFile.DisplayHeight > 0)
-                        Operation.DisplayHeight = (decimal)App.SlicerFile.DisplayHeight;
                     Operation.PropertyChanged += (sender, e) =>
                     {
                         _timer.Stop();

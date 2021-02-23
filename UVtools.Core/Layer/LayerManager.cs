@@ -20,15 +20,16 @@ using Emgu.CV.Structure;
 using Emgu.CV.Util;
 using UVtools.Core.Extensions;
 using UVtools.Core.FileFormats;
+using UVtools.Core.Objects;
 using UVtools.Core.Operations;
 using UVtools.Core.PixelEditor;
 
 namespace UVtools.Core
 {
-    public class LayerManager : IEnumerable<Layer>
+    public class LayerManager : BindableBase, IEnumerable<Layer>, IDisposable
     {
         #region Properties
-        public FileFormat SlicerFile { get; }
+        public FileFormat SlicerFile { get; set; }
 
         private Layer[] _layers;
 
@@ -43,18 +44,47 @@ namespace UVtools.Core
                 _layers = value;
                 BoundingRectangle = Rectangle.Empty;
                 SlicerFile.LayerCount = Count;
+                SlicerFile.RequireFullEncode = true;
                 if (value is null) return;
                 SlicerFile.PrintTime = SlicerFile.PrintTimeComputed;
             }
         }
 
+        /// <summary>
+        /// Gets the bounding rectangle of the object
+        /// </summary>
         private Rectangle _boundingRectangle = Rectangle.Empty;
 
+        /// <summary>
+        /// Gets the bounding rectangle of the object
+        /// </summary>
         public Rectangle BoundingRectangle
         {
             get => GetBoundingRectangle();
-            set => _boundingRectangle = value;
+            set
+            {
+                RaiseAndSetIfChanged(ref _boundingRectangle, value);
+                RaisePropertyChanged(nameof(BoundingRectangleMillimeters));
+            }
         }
+
+        /// <summary>
+        /// Gets the bounding rectangle of the object in millimeters
+        /// </summary>
+        public RectangleF BoundingRectangleMillimeters
+        {
+            get
+            {
+                if (SlicerFile is null) return RectangleF.Empty;
+                var pixelSize = SlicerFile.PixelSize;
+                return new RectangleF(
+                    (float)Math.Round(_boundingRectangle.X * pixelSize.Width, 2),
+                    (float)Math.Round(_boundingRectangle.Y * pixelSize.Height, 2),
+                    (float)Math.Round(_boundingRectangle.Width * pixelSize.Width, 2),
+                    (float)Math.Round(_boundingRectangle.Height * pixelSize.Height, 2));
+            }
+        }
+            
 
         /// <summary>
         /// Gets the layers count
@@ -78,8 +108,12 @@ namespace UVtools.Core
             }
         }
 
-        public float LayerHeight => Layers[0].PositionZ;
+        /// <summary>
+        /// Gets if all layers have same value parameters as global settings
+        /// </summary>
+        public bool AllLayersHaveGlobalParameters => Layers.Where(layer => layer is not null).All(layer => layer.HaveGlobalParameters);
 
+        //public float LayerHeight => Layers[0].PositionZ;
 
         #endregion
 
@@ -180,25 +214,79 @@ namespace UVtools.Core
         /// <summary>
         /// Rebuild layer properties based on slice settings
         /// </summary>
-        public void RebuildLayersProperties(bool recalculateZPos = true)
+        public void RebuildLayersProperties(bool recalculateZPos = true, string property = null)
         {
             //var layerHeight = SlicerFile.LayerHeight;
             for (uint layerIndex = 0; layerIndex < Count; layerIndex++)
             {
                 var layer = this[layerIndex];
                 layer.Index = layerIndex;
-                layer.ExposureTime  = SlicerFile.GetInitialLayerValueOrNormal(layerIndex, SlicerFile.BottomExposureTime, SlicerFile.ExposureTime);
-                layer.LiftHeight    = SlicerFile.GetInitialLayerValueOrNormal(layerIndex, SlicerFile.BottomLiftHeight, SlicerFile.LiftHeight);
-                layer.LiftSpeed     = SlicerFile.GetInitialLayerValueOrNormal(layerIndex, SlicerFile.BottomLiftSpeed, SlicerFile.LiftSpeed);
-                layer.RetractSpeed  = SlicerFile.RetractSpeed;
-                layer.LightPWM      = SlicerFile.GetInitialLayerValueOrNormal(layerIndex, SlicerFile.BottomLightPWM, SlicerFile.LightPWM);
-                layer.LayerOffTime  = SlicerFile.GetInitialLayerValueOrNormal(layerIndex, SlicerFile.BottomLayerOffTime, SlicerFile.LayerOffTime);
+
+                if (property is null)
+                {
+                    layer.ExposureTime = SlicerFile.GetInitialLayerValueOrNormal(layerIndex, SlicerFile.BottomExposureTime, SlicerFile.ExposureTime);
+                    layer.LiftHeight = SlicerFile.GetInitialLayerValueOrNormal(layerIndex, SlicerFile.BottomLiftHeight, SlicerFile.LiftHeight);
+                    layer.LiftSpeed = SlicerFile.GetInitialLayerValueOrNormal(layerIndex, SlicerFile.BottomLiftSpeed, SlicerFile.LiftSpeed);
+                    layer.RetractSpeed = SlicerFile.RetractSpeed;
+                    layer.LightPWM = SlicerFile.GetInitialLayerValueOrNormal(layerIndex, SlicerFile.BottomLightPWM, SlicerFile.LightPWM);
+                    layer.LightOffDelay = SlicerFile.GetInitialLayerValueOrNormal(layerIndex, SlicerFile.BottomLightOffDelay, SlicerFile.LightOffDelay);
+                }
+                else
+                {
+                    if (layer.IsNormalLayer)
+                    {
+                        switch (property)
+                        {
+                            case nameof(SlicerFile.ExposureTime):
+                                layer.ExposureTime = SlicerFile.ExposureTime;
+                                break;
+                            case nameof(SlicerFile.LiftHeight):
+                                layer.LiftHeight = SlicerFile.LiftHeight;
+                                break;
+                            case nameof(SlicerFile.LiftSpeed):
+                                layer.LiftSpeed = SlicerFile.LiftSpeed;
+                                break;
+                            case nameof(SlicerFile.LightOffDelay):
+                                layer.LightOffDelay = SlicerFile.LightOffDelay;
+                                break;
+                            case nameof(SlicerFile.LightPWM):
+                                layer.LightPWM = SlicerFile.LightPWM;
+                                break;
+                        }
+                    }
+                    else // Bottom layers
+                    {
+                        switch (property)
+                        {
+                            case nameof(SlicerFile.BottomExposureTime):
+                                layer.ExposureTime = SlicerFile.BottomExposureTime;
+                                break;
+                            case nameof(SlicerFile.BottomLiftHeight):
+                                layer.LiftHeight = SlicerFile.BottomLiftHeight;
+                                break;
+                            case nameof(SlicerFile.BottomLiftSpeed):
+                                layer.LiftSpeed = SlicerFile.BottomLiftSpeed;
+                                break;
+                            case nameof(SlicerFile.RetractSpeed):
+                                layer.RetractSpeed = SlicerFile.RetractSpeed;
+                                break;
+                            case nameof(SlicerFile.BottomLightOffDelay):
+                                layer.LightOffDelay = SlicerFile.BottomLightOffDelay;
+                                break;
+                            case nameof(SlicerFile.BottomLightPWM):
+                                layer.LightPWM = SlicerFile.BottomLightPWM;
+                                break;
+                        }
+                    }
+                }
 
                 if (recalculateZPos)
                 {
                     layer.PositionZ = SlicerFile.GetHeightFromLayer(layerIndex);
                 }
             }
+
+            SlicerFile?.RebuildGCode();
         }
 
         public Rectangle GetBoundingRectangle(OperationProgress progress = null)
@@ -215,7 +303,7 @@ namespace UVtools.Core
                     
                     this[layerIndex].GetBoundingRectangle();
 
-                    if (ReferenceEquals(progress, null)) return;
+                    if (progress is null) return;
                     lock (progress.Mutex)
                     {
                         progress++;
@@ -223,12 +311,11 @@ namespace UVtools.Core
                 });
                 _boundingRectangle = this[0].BoundingRectangle;
 
-                if (!ReferenceEquals(progress, null) && progress.Token.IsCancellationRequested)
+                if (progress is not null && progress.Token.IsCancellationRequested)
                 {
                     _boundingRectangle = Rectangle.Empty;
                     progress.Token.ThrowIfCancellationRequested();
                 }
-                
             }
 
             progress.Reset(OperationProgress.StatusCalculatingBounds, Count-1);
@@ -238,7 +325,7 @@ namespace UVtools.Core
                 _boundingRectangle = Rectangle.Union(_boundingRectangle, this[i].BoundingRectangle);
                 progress++;
             }
-
+            RaisePropertyChanged(nameof(BoundingRectangle));
             return _boundingRectangle;
         }
 
@@ -376,8 +463,8 @@ namespace UVtools.Core
                             !overhangConfig.Enabled &&
                             (layer.Index == 0 || 
                              (
-                                 (!ReferenceEquals(overhangConfig.WhiteListLayers, null) && !overhangConfig.WhiteListLayers.Contains(layer.Index)) &&
-                                 (!ReferenceEquals(islandConfig.WhiteListLayers, null) && !islandConfig.WhiteListLayers.Contains(layer.Index))
+                                 (overhangConfig.WhiteListLayers is not null && !overhangConfig.WhiteListLayers.Contains(layer.Index)) &&
+                                 (islandConfig.WhiteListLayers is not null && !islandConfig.WhiteListLayers.Contains(layer.Index))
                              )
                             )
                         )
@@ -485,7 +572,7 @@ namespace UVtools.Core
 
                             if (islandConfig.Enabled)
                             {
-                                if (!ReferenceEquals(islandConfig.WhiteListLayers, null)) // Check white list
+                                if (islandConfig.WhiteListLayers is not null) // Check white list
                                 {
                                     if (!islandConfig.WhiteListLayers.Contains(layer.Index))
                                     {
@@ -532,7 +619,7 @@ namespace UVtools.Core
                                             (int) ccStats.GetValue(i, (int) ConnectedComponentsTypes.Width),
                                             (int) ccStats.GetValue(i, (int) ConnectedComponentsTypes.Height));
 
-                                        if (rect.GetArea() < islandConfig.RequiredAreaToProcessCheck)
+                                        if (rect.Area() < islandConfig.RequiredAreaToProcessCheck)
                                             continue;
 
                                         if (previousImage is null)
@@ -589,7 +676,7 @@ namespace UVtools.Core
 
                                         // Check for overhangs
                                         if (overhangConfig.Enabled && !overhangConfig.IndependentFromIslands && island is null
-                                            || !ReferenceEquals(island, null) && islandConfig.EnhancedDetection && pixelsSupportingIsland >= 10
+                                            || island is not null && islandConfig.EnhancedDetection && pixelsSupportingIsland >= 10
                                         )
                                         {
                                             points.Clear();
@@ -633,7 +720,7 @@ namespace UVtools.Core
                                             }
                                         }
 
-                                        if(!ReferenceEquals(island, null))
+                                        if(island is not null)
                                             AddIssue(island);
                                     }
 
@@ -644,7 +731,7 @@ namespace UVtools.Core
                             if (!islandConfig.Enabled && overhangConfig.Enabled || 
                                 (islandConfig.Enabled && overhangConfig.Enabled && overhangConfig.IndependentFromIslands))
                             {
-                                if (!ReferenceEquals(overhangConfig.WhiteListLayers, null)) // Check white list
+                                if (overhangConfig.WhiteListLayers is not null) // Check white list
                                 {
                                     if (!overhangConfig.WhiteListLayers.Contains(layer.Index))
                                     {
@@ -735,7 +822,7 @@ namespace UVtools.Core
                                             continue;
 
                                         var rect = CvInvoke.BoundingRectangle(contours[i]);
-                                        if(rect.GetArea() < resinTrapConfig.RequiredAreaToProcessCheck) continue;
+                                        if(rect.Area() < resinTrapConfig.RequiredAreaToProcessCheck) continue;
 
                                         listHollowArea.Add(new LayerHollowArea(contours[i].ToArray(),
                                             rect,
@@ -1009,7 +1096,7 @@ namespace UVtools.Core
                 {
                     var mat = modifiedLayers.GetOrAdd(operation.LayerIndex, u => this[operation.LayerIndex].LayerMat);
 
-                    if (ReferenceEquals(layerContours, null))
+                    if (layerContours is null)
                     {
                         layerContours = new VectorOfVectorOfPoint();
                         layerHierarchy = new Mat();
@@ -1239,7 +1326,19 @@ namespace UVtools.Core
             return layerManager;
         }
 
+        public void Dispose() { }
 
         #endregion
+
+        #region Formater
+
+        public override string ToString()
+        {
+            return $"{nameof(BoundingRectangle)}: {BoundingRectangle}, {nameof(Count)}: {Count}, {nameof(IsModified)}: {IsModified}";
+        }
+
+        #endregion
+
+        
     }
 }

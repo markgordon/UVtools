@@ -8,9 +8,9 @@
 
 using System;
 using System.Drawing;
+using System.Globalization;
 using System.Text;
 using System.Threading.Tasks;
-using System.Xml.Serialization;
 using Emgu.CV;
 using Emgu.CV.CvEnum;
 using Emgu.CV.Structure;
@@ -25,7 +25,6 @@ namespace UVtools.Core.Operations
     public sealed class OperationCalibrateGrayscale : Operation
     {
         #region Members
-        private Size _resolution = Size.Empty;
         private decimal _layerHeight = 0.05M;
         private ushort _bottomLayers = 10;
         private ushort _interfaceLayers = 5;
@@ -41,6 +40,7 @@ namespace UVtools.Core.Operations
         private byte _brightnessSteps = 10;
         private bool _enableCenterHoleRelief = true;
         private ushort _centerHoleDiameter = 200;
+        private bool _convertBrightnessToExposureTime;
         private bool _enableLineDivisions = true;
         private byte _lineDivisionThickness = 30;
         private byte _lineDivisionBrightness = 255;
@@ -100,15 +100,21 @@ namespace UVtools.Core.Operations
 
         #endregion
 
-        #region Properties
+        #region Constructor
 
-        [XmlIgnore]
-        public Size Resolution
+        public OperationCalibrateGrayscale() { }
+
+        public OperationCalibrateGrayscale(FileFormat slicerFile) : base(slicerFile)
         {
-            get => _resolution;
-            set => RaiseAndSetIfChanged(ref _resolution, value);
+            _layerHeight = (decimal)slicerFile.LayerHeight;
+            _bottomLayers = slicerFile.BottomLayerCount;
+            _bottomExposure = (decimal)slicerFile.BottomExposureTime;
+            _normalExposure = (decimal)slicerFile.ExposureTime;
+            _mirrorOutput = slicerFile.MirrorDisplay;
         }
+        #endregion
 
+        #region Properties
 
         public decimal LayerHeight
         {
@@ -259,6 +265,12 @@ namespace UVtools.Core.Operations
             set => RaiseAndSetIfChanged(ref _centerHoleDiameter, value);
         }
 
+        public bool ConvertBrightnessToExposureTime
+        {
+            get => _convertBrightnessToExposureTime;
+            set => RaiseAndSetIfChanged(ref _convertBrightnessToExposureTime, value);
+        }
+
         public bool EnableLineDivisions
         {
             get => _enableLineDivisions;
@@ -340,10 +352,10 @@ namespace UVtools.Core.Operations
         {
             Mat[] layers = new Mat[3];
 
-            layers[0] = EmguExtensions.InitMat(Resolution);
+            layers[0] = EmguExtensions.InitMat(SlicerFile.Resolution);
 
-            int radius = Math.Max(100, Math.Min(Resolution.Width, Resolution.Height) - _outerMargin * 2) / 2 ;
-            Point center = new Point(Resolution.Width / 2, Resolution.Height / 2);
+            int radius = Math.Max(100, Math.Min(SlicerFile.Resolution.Width, SlicerFile.Resolution.Height) - _outerMargin * 2) / 2 ;
+            Point center = new Point(SlicerFile.Resolution.Width / 2, SlicerFile.Resolution.Height / 2);
             int innerRadius = Math.Max(100, radius - _innerMargin);
             double topLineLength = 0;
 
@@ -385,7 +397,7 @@ namespace UVtools.Core.Operations
             FontFace fontFace = FontFace.HersheyDuplex;
             double fontScale = 2;
             int fontThickness = 5;
-            Point fontPoint = new Point(center.X + radius / 2 + _textXOffset, (int)(center.Y + AngleStep / 1.1));
+            Point fontPoint = new Point((int) (center.X + radius / 2.5f + _textXOffset), (int)(center.Y + AngleStep / 1.5));
 
             var halfAngleStep = AngleStep / 2;
             var rotatedAngle = halfAngleStep;
@@ -394,7 +406,12 @@ namespace UVtools.Core.Operations
             layers[2].Rotate(halfAngleStep);
             for (ushort brightness = _startBrightness; brightness <= _endBrightness; brightness += _brightnessSteps)
             {
-                CvInvoke.PutText(layers[2], brightness.ToString(), fontPoint, fontFace, fontScale, EmguExtensions.BlackByte, fontThickness, lineType);
+                var text = brightness.ToString();
+                if (_convertBrightnessToExposureTime)
+                {
+                    text = $"{Math.Round(brightness * _normalExposure / byte.MaxValue, 2)}s";
+                }
+                CvInvoke.PutText(layers[2], text, fontPoint, fontFace, fontScale, EmguExtensions.BlackByte, fontThickness, lineType);
                 rotatedAngle += AngleStep;
                 layers[2].Rotate(AngleStep);
             }
@@ -452,32 +469,22 @@ namespace UVtools.Core.Operations
             return thumbnail;
         }
 
-        public override bool Execute(FileFormat slicerFile, OperationProgress progress = null)
+        protected override bool ExecuteInternally(OperationProgress progress)
         {
-            progress ??= new OperationProgress();
-            progress.Reset(ProgressAction, LayerCount);
-            slicerFile.SuppressRebuildProperties = true;
-
+            progress.ItemCount = LayerCount;
             var newLayers = new Layer[LayerCount];
 
-            slicerFile.LayerHeight = (float)LayerHeight;
-            slicerFile.BottomExposureTime = (float)BottomExposure;
-            slicerFile.ExposureTime = (float)NormalExposure;
-            slicerFile.BottomLayerCount = BottomLayers;
-
             var layers = GetLayers();
-            progress++;
 
-
-            var bottomLayer = new Layer(0, layers[0], slicerFile.LayerManager)
+            var bottomLayer = new Layer(0, layers[0], SlicerFile.LayerManager)
             {
                 IsModified = true
             };
-            var interfaceLayer = InterfaceLayers > 0 && layers[1] is not null ? new Layer(0, layers[1], slicerFile.LayerManager)
+            var interfaceLayer = InterfaceLayers > 0 && layers[1] is not null ? new Layer(0, layers[1], SlicerFile.LayerManager)
             {
                 IsModified = true
             } : null;
-            var layer = new Layer(0, layers[2], slicerFile.LayerManager)
+            var layer = new Layer(0, layers[2], SlicerFile.LayerManager)
             {
                 IsModified = true
             };
@@ -511,17 +518,20 @@ namespace UVtools.Core.Operations
             }
 
 
-            if (slicerFile.ThumbnailsCount > 0)
-                slicerFile.SetThumbnails(GetThumbnail());
+            if (SlicerFile.ThumbnailsCount > 0)
+                SlicerFile.SetThumbnails(GetThumbnail());
 
-            progress++;
+            SlicerFile.SuppressRebuildProperties = true;
+            SlicerFile.LayerHeight = (float)LayerHeight;
+            SlicerFile.BottomExposureTime = (float)BottomExposure;
+            SlicerFile.ExposureTime = (float)NormalExposure;
+            SlicerFile.BottomLayerCount = BottomLayers;
 
+            SlicerFile.LayerManager.Layers = newLayers;
+            SlicerFile.LayerManager.RebuildLayersProperties();
+            SlicerFile.SuppressRebuildProperties = false;
 
-            slicerFile.LayerManager.Layers = newLayers;
-            slicerFile.SuppressRebuildProperties = false;
-            slicerFile.LayerManager.RebuildLayersProperties();
-            
-            return true;
+            return !progress.Token.IsCancellationRequested;
         }
 
         #endregion

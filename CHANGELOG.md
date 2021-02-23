@@ -1,5 +1,220 @@
 # Changelog
 
+## 21/02/2021 - v2.5.0
+
+* (Add) Help - Material manager (F10): Allow to manage material stock and costs with statistic over time
+* (Add) File - I printed this file (CTRL + P): Allow to select a material and consume resin from stock and print time from the loaded file
+
+## 19/02/2021 - v2.4.9
+
+* **(Fix) PhotonWorkshop files: (#149)**
+   * CurrencySymbol to show the correct symbol and don't convert unknown values to prevent hacking
+   * Set PerLayerOverride to 1 only if any layer contains modified parameters that are not shared with the globals
+* **(Fix) Clipboard:**
+   * Initing the clipboard for the first time was calling Undo and reseting parameters from layers with base settings
+   * Undo and redo make layer parameters to reset and recalculate position z, making invalid files when using with advanced tools
+* (Fix) Tool - Edit print parameters: When editing per a layer range and reopen the tool it will show the previous set values
+
+## 18/02/2021 - v2.4.8
+
+* (Improvement) Cache per layer and global used material for faster calculations
+* (Improvement) Better internal PrintTime management
+* **(Improvement) GUI:**
+   * Show per layer used material percentage compared to the rest model
+   * Show total of millimeters cured per layer if available
+   * Show bounds and ROI in millimeters if available
+   * Show display width and height below resolution if available
+   * Don't split (Actions / Refresh / Save) region when resize window and keep those fixed
+* **(Improvement) Calibrate - Grayscale:**
+   * Add a option to convert brightness to exposure time on divisions text
+   * Adjust text position to be better centered and near from the center within divisions
+* (Fix) Calculate the used material with global layer height instead of calculate height from layer difference which lead to wrong values in parallel computation
+* (Fix) Converting files were not setting the new file as parent for the layer manager, this affected auto convertions from SL1 and lead to crashes and bad calculations if file were not reloaded from the disk (#150, #151)
+* (Fix) PositionZ rounding error when removing layers
+
+## 17/02/2021 - v2.4.7
+
+* (Add) Computed used material milliliters for each layer, it will dynamic change if pixels are added or subtracted
+* (Add) Computed used material milliliters for whole model, it will dynamic change if pixels are added or subtracted
+* (Improvement) Round cost, material ml and grams from 2 to 3 decimals
+* (Improvement) Operation profiles: Allow to save and get a custom layer range instead of pre-defined ranges
+* **(Improvement)** PhotonWorkshop files: (#149)
+   * Fill in the display width, height and MaxZ values for the printers
+   * Fill in the xy pixel size values for the printers
+   * Change ResinType to PriceCurrencyDec and Add PriceCurrencySymbol
+   * Change Offset1 on header to PrintTime
+   * Change Offset1 on layer table as NonZeroPixelCount, the number of white pixels on the layer 
+   * Fix LayerPositionZ to calculate the correct value based on each layer height and fix internal layer layer height which was been set to position z
+   * Force PerLayerOverride to be always 1 after save the file
+* (Fix) Actions - Remove and clone layers was selecting all layer range instead of the current layer
+* (Fix) Redo last action was not getting back the layer range on some cases
+
+## 15/02/2021 - v2.4.6
+
+* **(Improvement) Calibration - Elephant Foot:** (#145)
+   * Remove text from bottom layers to prevent islands from not adhering to plate 
+   * Add a option to extrude text up to a height
+* **(Improvement) Calibration - Exposure time finder:** (#144)
+   * Increase the left and right margin to 10mm
+   * Allow to iterate over pixel brightness and generate dimmed objects to test multiple times at once
+* **(Fix) File format PWS:**
+   * Some files would produce black layers if pixels are not full whites, Antialiasing level was not inherit from source
+   * Antialiasing level was forced 1 and not read the value from file properties
+   * Antialiasing threshold pixel math was producing the wrong pixel value
+* **(Fix) Raw images (jpg, png, etc):** (#146)
+   * Set layer height to be 0.01mm by default to allow the use of some tools
+   * When add layers by clone or other tool it don't update layers height, positions, indexes, leading to crashes
+* **(Fix) Actions - Import Layers:** (#146, #147)
+   * ROI calculation error leading to not process images that can potential fit inside the volumes
+   * Out-of-bounds calculation for Stack type
+   * Replace type was calculating out-of-bounds calculation like Stack type when is not required to and can lead to skip images
+   * Better image ROI colection for Insert and Replace types instead of capture the center most 
+* (Fix) Settings window: Force a redraw on open to fix auto sizes
+
+## 12/02/2021 - v2.4.5
+
+* (Add) Setting: Expand and show tool descriptions by default
+* (Improvement) Drag and drop a file on Main Window while hold SHIFT key will open the file under a new instance
+* (Improvement) PrusaSlicer & SL1 files: Allow to set custom variables on "Material - Notes" per resin to override the "Printer - Notes" variables
+    This will allow custom settings per resin, for example, if you want a higher 'lift height, lift speed, etc' on more viscous resins. (#141)
+* (Change) Setting: Windows vertical margin to 60px
+* (Fix) Export file was getting a "Parameter count mismatch" on some file formats (#140)
+* (Fix) photon and cbddlp file formats with version 3 to never hash images
+* (Fix) Windows was not geting the screen bounds from the active monitor
+* (Fix) Tool windows height, vertical margin and position
+* **(Fix) Exposure time finder:**
+  * Text label
+  * Set vertical splitter to not show decimals, int value 
+  * Set vertical splitter default to 0
+  * Allow vertical splitter to accept negative values
+  * Optimized the default values
+  * Removed similar letters from text
+  * Add some symbols to text to validate overexposure
+  * Decrease Features height minimum value to 0.5mm
+
+## 09/02/2021 - v2.4.4
+
+* (Improvement) Exposure time finder: Invert circles loop into quadrants
+
+## 08/02/2021 - v2.4.3
+
+* **(Add) Exposure time finder:**
+  * Configurable zebra bars
+  * Configurable text
+  * Tune defaults values to fill the space
+  * Add incremental loop circles to fill space on exposure text space
+* (Change) Default vertical windows margin from 250 to 400px
+
+## 08/02/2021 - v2.4.2
+
+* **(Improvement) Exposure time finder:**
+  * Bring back shapes
+  * Diameters now represent square pixels, eg: 3 = 3x3 pixels = 9 pixels total
+  * Optimized default diameters
+
+## 07/02/2021 - v2.4.1
+
+* **(Fix) Exposure time finder:**
+  * Use a spiral square instead of configurable shapes to match the exact precise set pixels
+  * Set pixels as default values
+  * Optimized the pixel values to always produce a closed shape
+  * Rename cylinder to hole
+  * Crash when diameters are empty
+  * Profiles was not saving
+
+
+## 06/02/2021 - v2.4.0
+
+* (Upgrade) EmguCV/OpenCV to v4.5.1
+* (Upgrade) AvaloniaUI to 1.0
+* (Improvement) GUI re-touched
+* (Improvement) Make pixel editor tab to disappear when pixel editor is disabled
+* (Improvement) Simplify the output filename from PrusaSlicer profiles
+* (Improvement) All operations require a slicer file at constructor rather than on execute, this allow exposure the open file to the operation before run it
+* (Improvement) Calibrations: Auto set "Mirror Output" if open file have MirrorDisplay set
+* (Change) Tool - Redraw model/supports icon
+* (Change) photon and cbddlp to use version 3 by default
+* (Add) Tool - Dynamic layer height: Analyze and optimize the model with dynamic layer heights, larger angles will slice at lower layer height
+        while more straight angles will slice larger layer height. (#131)
+* (Add) Calibration - Exposure time finder: Generates test models with various strategies and increments to verify the best exposure time for a given layer height
+* (Add) File load checks, trigger error when a file have critical errors and attempt to fix non-critical errors
+  * Layers must have an valid image, otherwise trigger an error
+  * Layers must have a incremental or equal position Z than it previous, otherwise trigger an error
+  * If layer 0 starts at 0mm it will auto fix all layers, it will add Layer Height to the current z at every layer
+* (Add) Tool - Edit print parameters: Allow set parameters to each x layers and skip n layers inside the given range.
+        This allow the use of optimizations in a layer pattern, for example, to set 3s for a layer but 2.5s for the next.
+* (Add) Layer height property to "Layer Data" table: Shows layer height for the slice
+* (Fix) When automations applied and file is saved, it will not warn user about file overwrite for the first time save
+* (Fix) Tool - Redraw model/supports: Disable apply button when no file selected
+* (Fix) Tool - Infill: Lack of equality member to test if same infill profile already exists
+* (Fix) Auto converted files from SL1 where clipping filename at first dot (.), now it only strips known extensions
+* (Fix) SL1 encoded files wasn't generating the right information and lead to printer crash
+* (Fix) PrusaSlicer printer "Anycubic Photon S" LiftSpeed was missing and contains a typo (#135)
+* (Fix) PrusaSlicer profile manager wasnt marking missing profiles to be installed (#135)
+* (Fix) PrusaSlicer folder search on linux to also look at %HOME%/.config/PrusaSlicer (#135, #136)
+* (Fix) Operations were revised and some bug fixed, most about can't cancel the progress
+* (Fix) Some typos on tooltips
+* (Fix) Prevent PhotonS from enconding, it will trigger error now as this format is read-only
+* **(Fix) Ctrl + Shift + Z to redo the last operation:**
+  * The layer range is reseted instead of pull the used values
+  * Tool - Arithmetic always disabled
+  * Action - Layer import didn't generate info and always disabled
+
+## 22/01/2021 - v2.3.2
+
+* (Add) Settings - Automations: Change only light-off delay if value is zero (Enabled by default)
+* (Fix) Calibrators: Some file formats will crash when calibration test output more layers than the dummy file
+* (Fix) Undo/redo don't unlock the save function
+
+## 19/01/2021 - v2.3.1
+
+* (Add) Calibrator - Stress Tower: Generates a stress tower to test the printer capabilities
+* (Add) PrusaSlicer printer: UVtools Prusa SL1, for SL1 owners must use this profile to be UVtools compatible when using advanced tools
+* (Fix) Tool - Calculator - Optimal model tilt: Layer height wasn't get pulled from loaded file and fixed to 0.05mm
+* **(Fix) FileFormats:**
+  * When change a global print paramenter, it will only set this same parameter on every layer, keeping other parameters intact, it was reseting every parameter per layer to globals
+  * SL1: Verify if files are malformed and if there's missing configuration files (#126)
+  * CTBv3: Set EncryptionMode to 0x2000000F, this allow the use of per layer settings
+
+## 13/01/2021 - v2.3.0
+
+* **PrusaSlicer:**
+   * **In this release is recommended to discard your printer and refresh it with uvtools updated printer or replace notes over**
+   * (Add) FILEFORMAT_XXX variable to auto-convert to that file format once open in UVtools
+   * (Update) Print profiles fields with new PrusaSlicer version
+   * (Remove) LayerOffDelay from printer notes and use only the LightOffDelay variable instead, both were being used, to avoid redundacy LayerOffDelay was dropped. Please update your printer accordingly!
+   * (Remove) FLIP_XY compability from printers
+   * (Remove) AntiAlias variable from printers
+* **(Add) Settings - Automations:**
+   * Auto save the file after apply any automation(s)
+   * Auto convert SL1 files to the target format when possible and load it back
+   * Auto set the extra 'light-off delay' based on lift height and speed.
+* **FileFormats:**
+    * (Add) Allow all and future formats to convert between them without knowing each other (Abstraction)
+    * (Add) MirrorDisplay property: If images need to be mirrored on lcd to print on the correct orientation (If available)
+    * (Add) MaxPrintHeight property: The maximum Z build volume of the printer (If available)
+    * (Add) XYResolution and XYResolutionUm property
+    * (Change) Round all setters floats to 2 decimals
+    * (Change) LightOffTime variables to LayerOffDelay
+    * (Fix) Files with upper case extensions doesn't load in
+* (Add) Calculator - Optimal model tilt: Calculates the optimal model tilt angle for printing and to minimize the visual layer effect
+* (Add) Bottom layer count to the status bar
+* (Add) ZCodex: Print paramenter light-off delay"
+* (Change) Island Repair: "Remove Islands Below Equal Pixels" limit from 255 to 65535 (#124)
+* **(Fix) SL1:**
+    * Prevent error when bottle volume is 0
+    * bool values were incorrectly parsed
+    * Implement missing keys: host_type, physical_printer_settings_id and support_small_pillar_diameter_percent
+* **(Fix) ZIP:**
+    * Material volume was set to grams
+    * Bed Y was not being set
+
+## 10/01/2021 - v2.2.0
+
+* (Add) FDG file format for Voxelab Printers (ezrec/uv3dp#129)
+* (Add) PrusaSlicer printer: Voxelab Ceres 8.9
+* (Change) Print time display to hours and minutes: 00h00m
+
 ## 07/01/2021 - v2.1.3
 
 * (Add) PrusaSlicer printers:
