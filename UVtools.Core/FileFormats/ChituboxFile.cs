@@ -1634,7 +1634,7 @@ namespace UVtools.Core.FileFormats
                 layer_num++;
                 base_lift = BottomLiftHeight;
                 //get exposure time of first layer, then gradually draw down
-                if (layer_num > BottomLayerCount)
+                if (layer_num > BottomLayerCount + 6)
                 {
                     var mat = layer.LayerMat;
 
@@ -1651,12 +1651,12 @@ namespace UVtools.Core.FileFormats
                 }
                 else 
                 {
-                    float[] divisors = { 1,1.3F, 1.6F, 2, 3, 5,6,8,10};
-                    if (layer_num > 1)
+                    float[] divisors = { 1.3F, 1.6F, 2, 3, 5,6,8,10};
+                    if (layer_num > BottomLayerCount)
                         //gradually decrease layer exposure time
-                        if (BottomExposureTime / (divisors[layer_num]) > ExposureTime)
+                        if (BottomExposureTime / (divisors[layer_num - BottomLayerCount]) > ExposureTime)
                         {
-                            layer.ExposureTime = BottomExposureTime / (divisors[layer_num]);
+                            layer.ExposureTime = BottomExposureTime / (divisors[layer_num - BottomLayerCount]);
                         }
                         else
                         {
