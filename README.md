@@ -66,6 +66,7 @@ But also, i need victims for test subject. Proceed at your own risk!
 * PWMO (Photon Workshop)
 * PWMS (Photon Workshop)
 * PWMX (Photon Workshop)
+* ZCode (UnizMaker)
 * ZCodex (Z-Suite)
 * CWS (NovaMaker)
 * RGB.CWS (Nova Bene4 Mono / Elfin2 Mono SE)
@@ -86,7 +87,6 @@ But also, i need victims for test subject. Proceed at your own risk!
   * X133 4K Mono
   * X156 4K Color
   * X1K 2K Mono
-* **Zortrax Inkspire**
 * **Nova3D**
   * Elfin
   * Bene4 Mono
@@ -140,6 +140,8 @@ But also, i need victims for test subject. Proceed at your own risk!
   * Orange 10
   * Orange 30
   * Orange4K
+* **Uniz IBEE**
+* **Zortrax Inkspire**
 
 # Available profiles for PrusaSlicer
 
@@ -170,10 +172,10 @@ Replace the "xxx" by your desired value in the correct units
 * **BottomLightOffDelay_xxx:** Sets the bottom light off delay time in seconds
 * **LightOffDelay_xxx:** Sets the light off delay time in seconds
 * **BottomLiftHeight_xxx:** Sets the bottom lift height in millimeters
-* **BottomLiftSpeed_xxx:** Sets the bottom lift speed in millimeters/second
+* **BottomLiftSpeed_xxx:** Sets the bottom lift speed in millimeters/minute
 * **LiftHeight_xxx:** Sets the lift height in millimeters
-* **LiftSpeed_xxx:** Sets the lift speed in millimeters/second
-* **RetractSpeed_xxx:** Sets the retract speed in millimeters/second
+* **LiftSpeed_xxx:** Sets the lift speed in millimeters/minute
+* **RetractSpeed_xxx:** Sets the retract speed in millimeters/minute
 * **BottomLightPWM_xxx:** Sets the bottom LED light power (0-255)
 * **LightPWM_xxx:** Sets the LED light power (0-255)
 * **FILEFORMAT_xxx:** Sets the output file format extension to be auto converted once open on UVtools
@@ -188,20 +190,20 @@ https://github.com/sn4k3/UVtools/wiki/Sliced-File-Conversion
 
 1. Windows 7 or greater
    1. If on Windows 10 N or NK: [Media Feature Pack](https://www.microsoft.com/download/details.aspx?id=48231) must be installed
-1. [.NET 5.0](https://dotnet.microsoft.com/download/dotnet/5.0) installed (Comes pre-installed on Windows 10 with last updates)
+<!-- 1. [.NET 5.0](https://dotnet.microsoft.com/download/dotnet/5.0) installed (Comes pre-installed on Windows 10 with last updates)!-->
 1. 4GB RAM or higher
-1. 1980 x 1080 @ 100% scale as minimum resolution
+1. 1920 x 1080 @ 100% scale as minimum resolution
 
 
 ## Linux
 
 1. 4GB RAM or higher
 2. 64 bit System
-1. 1980 x 1080 @ 100% scale as minimum resolution
+1. 1920 x 1080 @ 100% scale as minimum resolution
 
 ### Ubuntu/Mint/Debian/Similars
 
-<!--- 
+<!--
 wget https://packages.microsoft.com/config/ubuntu/20.04/packages-microsoft-prod.deb -O packages-microsoft-prod.deb
 sudo dpkg -i packages-microsoft-prod.deb
 rm packages-microsoft-prod.deb
@@ -283,6 +285,53 @@ this process is very slow but only need to run once. Open a terminal on any fold
 ```bash
 sudo pacman -Syu
 sudo pacman -S base-devel git cmake msbuild
+git clone https://github.com/emgucv/emgucv emgucv 
+cd emgucv
+git submodule update --init --recursive
+cd platforms/ubuntu/20.04
+./cmake_configure.sh
+cmake build
+```
+
+Make sure all commands run with success.
+After run these commands you can try run UVtools again,
+if it runs then nothing more is needed and you can remove the emgucv folder, 
+this means you only need the dependencies on your system.
+ 
+Otherwise you need to copy the output 'emgucv/libs/x64/libcvextern.so' file created by this compilation to the UVtools folder and replace the original. 
+Keep a copy of file somewhere safe, you will need to replace it everytime you update UVtools.
+Additionally you can share your libcvextern.so on UVtools GitHub with your system information (Name Version) to help others with same problem, 
+anyone with same system version can make use of it without the need of the compilation process.
+
+**Note:** You need to repeat this process everytime UVtools upgrades OpenCV version, keep a eye on changelog.
+
+### RHEL/Fedora/CentOS
+
+
+```bash
+sudo yum update -y
+sudo yum install -y https://download1.rpmfusion.org/free/fedora/rpmfusion-free-release-$(rpm -E %fedora).noarch.rpm
+sudo yum install -y https://download1.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-$(rpm -E %fedora).noarch.rpm
+sudo yum install -y libjpeg-devel libjpeg-turbo-devel libpng-devel libgeotiff-devel libdc1394-devel ffmpeg-devel tbb-devel
+```
+
+
+### Compile libcvextern.so:
+
+**After this if you run UVtools and got a error like:**
+> System.DllNotFoundException: unable to load shared library 'cvextern' or one of its dependencies
+
+This means you haven't the required dependencies to run the cvextern library, 
+that may due system version and included libraries version, they must match the compiled version of libcvextern.
+
+To know what is missing you can open a terminal on UVtools folder and run the following command: `ldd libcvextern.so |grep not` 
+That will return the missing dependencies from libcvextern, you can try install them by other means if you can, 
+but most of the time you will need compile the EmguCV to compile the dependencies and correct link them, 
+this process is very slow but only need to run once. Open a terminal on any folder of your preference and run the following commands:
+
+```bash
+sudo yum groupinstall -y "Development Tools" "Development Libraries"
+sudo yum install -y cmake gcc-c++ dotnet-sdk-5.0
 git clone https://github.com/emgucv/emgucv emgucv 
 cd emgucv
 git submodule update --init --recursive
